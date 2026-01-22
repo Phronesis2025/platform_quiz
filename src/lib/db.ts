@@ -13,6 +13,9 @@ import * as schema from "./schema";
  * 
  * For local development, set these in .env.local
  * For Vercel deployment, set them in the Vercel dashboard
+ * 
+ * Note: The connection is lazy - it won't fail during build if POSTGRES_URL
+ * is not set, but will fail at runtime if missing.
  */
 export const db = drizzle(sql, { schema });
 

@@ -3,6 +3,9 @@ import { db } from "@/src/lib/db";
 import { submissions } from "@/src/lib/schema";
 import { desc } from "drizzle-orm";
 
+// Force dynamic rendering - this route should never be statically generated
+export const dynamic = "force-dynamic";
+
 /**
  * GET endpoint to retrieve all submissions
  * 

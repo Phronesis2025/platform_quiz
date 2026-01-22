@@ -7,6 +7,9 @@ import { eq } from "drizzle-orm";
 import { submissionRequestSchema } from "@/src/lib/validation";
 import { getRateLimiter } from "@/src/lib/rate-limit";
 
+// Force dynamic rendering - this route should never be statically generated
+export const dynamic = "force-dynamic";
+
 /**
  * API route to submit quiz responses
  * 
