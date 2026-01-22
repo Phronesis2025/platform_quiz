@@ -50,23 +50,76 @@ This guide covers everything you need to deploy and manage the Platform Quiz app
 
 ### Step 2: Get Connection Details
 
-1. After creating the KV database, go to **Settings** tab
-2. Scroll to **Storage** section
-3. Find your KV database
-4. Click on it to view details
-5. Copy the following:
-   - **REST API URL** (looks like `https://xxx.vercel-storage.com`)
-   - **REST API Token** (a long token string)
+After creating the KV database, you need to get the connection credentials. Here are detailed steps:
+
+**Method 1: From the Storage Tab (Easiest)**
+
+1. In your Vercel project dashboard, go to the **Storage** tab
+2. You should see your KV database listed (e.g., "platform-quiz-kv")
+3. Click on the database name to open it
+4. You'll see a page with database details. Look for:
+   - **REST API URL** - This is your `KV_REST_API_URL`
+     - Format: `https://xxx.vercel-storage.com`
+     - Copy this entire URL
+   - **REST API Token** - This is your `KV_REST_API_TOKEN`
+     - This is a long alphanumeric string
+     - Click the "Show" or "Reveal" button if it's hidden
+     - Copy the entire token
+
+**Method 2: From Project Settings**
+
+1. Go to your Vercel project dashboard
+2. Click on the **Settings** tab
+3. Scroll down to the **Storage** section
+4. Find your KV database in the list
+5. Click on the database name
+6. You'll see the connection details including:
+   - REST API URL
+   - REST API Token
+7. Copy both values
+
+**Method 3: Using Vercel CLI (Alternative)**
+
+If you have Vercel CLI installed, you can also get the connection details:
+
+```bash
+# Install Vercel CLI if you haven't
+npm i -g vercel
+
+# Login to Vercel
+vercel login
+
+# Link your project
+vercel link
+
+# Pull environment variables (this will include KV credentials if auto-configured)
+vercel env pull .env.local
+```
+
+**Important Notes:**
+- The REST API URL should start with `https://` and end with `.vercel-storage.com`
+- The REST API Token is a long string - make sure to copy it completely
+- If you don't see these values, make sure you're looking at the correct database
+- Some Vercel interfaces may show these as "Endpoint URL" and "Token" instead
 
 ### Step 3: Add Environment Variables
+
+**First, check if Vercel already added them automatically:**
+
+1. Go to **Settings** > **Environment Variables**
+2. Look for `KV_REST_API_URL` and `KV_REST_API_TOKEN` in the list
+3. **If they're already there**: Great! Vercel auto-configured them. You can skip to Step 4.
+4. **If they're not there**: Continue with the steps below
+
+**Manual Setup (if needed):**
 
 1. In your Vercel project, go to **Settings** > **Environment Variables**
 2. Click **Add New** for each variable:
    - **Key**: `KV_REST_API_URL`
-     - **Value**: Paste your REST API URL
+     - **Value**: Paste your REST API URL (from Step 2)
      - **Environments**: Select all (Production, Preview, Development)
    - **Key**: `KV_REST_API_TOKEN`
-     - **Value**: Paste your REST API Token
+     - **Value**: Paste your REST API Token (from Step 2)
      - **Environments**: Select all (Production, Preview, Development)
 3. Click **Save** for each variable
 
@@ -272,6 +325,44 @@ The admin page shows summary statistics:
 2. Check that the values are correct (no extra spaces, correct format)
 3. Ensure the KV database is active in Vercel dashboard
 4. Redeploy after adding environment variables
+
+### Can't Find KV Connection Details
+
+**Symptoms**: You created the KV database but can't find the REST API URL or Token
+
+**Solutions**:
+
+1. **Check if Vercel Auto-Configured It**:
+   - Sometimes Vercel automatically adds KV environment variables when you create the database
+   - Go to **Settings** > **Environment Variables**
+   - Look for `KV_REST_API_URL` and `KV_REST_API_TOKEN` - they might already be there!
+   - If they exist, you can skip manual setup
+
+2. **Try Different Navigation Paths**:
+   - **Path 1**: Storage tab → Click database name → Look for "Connection" or "API" section
+   - **Path 2**: Settings tab → Storage section → Click database → Connection details
+   - **Path 3**: Settings tab → Environment Variables → Check if auto-added
+
+3. **Check the Database Overview Page**:
+   - When you click on your KV database, you should see an overview page
+   - Look for tabs or sections like: "Overview", "Settings", "API", "Connection"
+   - The REST API URL and Token are usually in the "API" or "Connection" section
+
+4. **Use Vercel CLI** (if dashboard is unclear):
+   ```bash
+   # Install and login to Vercel CLI
+   npm i -g vercel
+   vercel login
+   vercel link
+   
+   # Pull environment variables (may include KV credentials)
+   vercel env pull .env.local
+   ```
+
+5. **Contact Vercel Support**:
+   - If you still can't find the credentials, Vercel's interface may have changed
+   - Check the [Vercel KV Documentation](https://vercel.com/docs/storage/vercel-kv)
+   - Or contact Vercel support for assistance
 
 ### Access Code Not Working
 
