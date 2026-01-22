@@ -1,0 +1,108 @@
+# Platform Quiz
+
+A Next.js 14+ quiz application built with TypeScript, Tailwind CSS, and the App Router.
+
+**Repository**: [https://github.com/Phronesis2025/platform_quiz](https://github.com/Phronesis2025/platform_quiz)
+
+## Features
+
+- **Landing Page** (`/`) - Welcome page explaining the quiz purpose
+- **Quiz Page** (`/quiz`) - Interactive quiz with multiple questions
+- **Result Page** (`/result/[id]`) - View individual quiz results
+- **Admin Page** (`/admin`) - View all quiz submissions (authentication ready for future implementation)
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ installed
+- npm or yarn package manager
+- Vercel Postgres database (or local Postgres for development)
+
+### Installation
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Set up environment variables:
+
+Create a `.env.local` file in the root directory:
+
+```env
+POSTGRES_URL=postgresql://user:password@host:port/database
+```
+
+Get your connection string from your Vercel dashboard: **Settings** > **Storage** > **Postgres**
+
+3. Run database migrations:
+
+```bash
+npm run db:push
+```
+
+This will create the `submissions` table in your database.
+
+4. Run the development server:
+
+```bash
+npm run dev
+```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Database Setup
+
+For detailed database setup instructions, see [README-DATABASE.md](./README-DATABASE.md).
+
+### Building for Production
+
+```bash
+npm run build
+npm start
+```
+
+## Project Structure
+
+```
+app/
+  ├── layout.tsx          # Root layout with metadata
+  ├── page.tsx            # Landing page (/)
+  ├── globals.css         # Global styles with Tailwind
+  ├── quiz/
+  │   └── page.tsx        # Quiz page (/quiz)
+  ├── result/
+  │   └── [id]/
+  │       └── page.tsx    # Dynamic result page (/result/[id])
+  └── admin/
+      └── page.tsx        # Admin dashboard (/admin)
+```
+
+## Technologies Used
+
+- **Next.js 14+** - React framework with App Router
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Utility-first CSS framework
+- **React** - UI library
+- **Vercel Postgres** - Serverless PostgreSQL database
+- **Drizzle ORM** - Type-safe SQL ORM
+
+## Database
+
+This project uses Vercel Postgres with Drizzle ORM for data persistence. Quiz submissions are stored in a `submissions` table with the following structure:
+
+- Quiz responses and answers
+- Calculated role fit scores
+- User metadata (name, team)
+- Request metadata (user agent, IP hash)
+
+See [README-DATABASE.md](./README-DATABASE.md) for detailed setup instructions.
+
+## Notes
+
+- Quiz results are stored in Vercel Postgres database
+- Admin page is structured to easily add authentication later
+- All routes are functional and include navigation between pages
+- IP addresses are hashed for privacy (SHA-256)
