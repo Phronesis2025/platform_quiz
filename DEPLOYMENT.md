@@ -454,6 +454,18 @@ The admin page shows summary statistics:
 3. Verify TypeScript configuration is correct
 4. Check for missing environment variables
 
+**Error**: "No Output Directory named 'public' found after the Build completed"
+
+**Solution**:
+1. The project includes a `vercel.json` file that configures Vercel to detect Next.js properly
+2. If you still see this error, check your Vercel project settings:
+   - Go to **Settings** > **General**
+   - Under **Build & Development Settings**, make sure:
+     - Framework Preset is set to **Next.js**
+     - Output Directory is **empty** or **.next** (not "public")
+     - Build Command is `npm run build` (or leave empty for auto-detection)
+3. The `vercel.json` file in the project should handle this automatically
+
 ### Admin Page Not Loading
 
 **Symptoms**: Admin page shows "Loading..." indefinitely
