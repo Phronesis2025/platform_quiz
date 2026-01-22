@@ -1,29 +1,72 @@
-import { kv } from "@vercel/kv";
+import { createClient } from "redis";
 import type { Submission, NewSubmission } from "./schema";
 import { randomUUID } from "crypto";
 
 /**
- * Database operations using Vercel KV (Redis)
+ * Database operations using Redis
  * 
- * This uses the @vercel/kv package which automatically reads from
- * environment variables. Vercel provides one of these options:
+ * This uses the standard redis package which supports REDIS_URL connection strings.
+ * Vercel provides REDIS_URL when you create a KV database.
  * 
- * Option 1 (REST API):
- * - KV_REST_API_URL (required)
- * - KV_REST_API_TOKEN (required)
- * 
- * Option 2 (Direct Redis connection):
- * - REDIS_URL (required) - Redis connection string
- * 
- * The @vercel/kv package will automatically use whichever is available.
- * 
- * For local development, set these in .env.local
- * For Vercel deployment, Vercel automatically provides the correct variables
+ * For local development, set REDIS_URL in .env.local
+ * For Vercel deployment, Vercel automatically provides REDIS_URL
  * 
  * Redis Key Patterns:
  * - "submission:{id}" - Stores individual submission as JSON
  * - "submissions:index" - Sorted set for ordering by timestamp
  */
+
+// Create Redis client - will be initialized on first use
+let redisClient: ReturnType<typeof createClient> | null = null;
+let isConnecting = false;
+
+/**
+ * Get or create Redis client
+ */
+async function getRedisClient() {
+  if (redisClient && redisClient.isOpen) {
+    return redisClient;
+  }
+
+  const redisUrl = process.env.REDIS_URL;
+  
+  if (!redisUrl) {
+    throw new Error("REDIS_URL environment variable is not set");
+  }
+
+  // If already connecting, wait a bit and try again
+  if (isConnecting) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (redisClient && redisClient.isOpen) {
+      return redisClient;
+    }
+  }
+
+  // Create Redis client with connection string
+  redisClient = createClient({
+    url: redisUrl,
+  });
+
+  // Handle connection errors
+  redisClient.on("error", (err) => {
+    console.error("Redis Client Error:", err);
+  });
+
+  // Connect to Redis
+  isConnecting = true;
+  try {
+    if (!redisClient.isOpen) {
+      await redisClient.connect();
+    }
+  } catch (err) {
+    console.error("Failed to connect to Redis:", err);
+    throw err;
+  } finally {
+    isConnecting = false;
+  }
+
+  return redisClient;
+}
 
 /**
  * Generate a new UUID for submission ID
@@ -37,8 +80,9 @@ function generateId(): string {
  */
 export async function getSubmission(id: string): Promise<Submission | null> {
   try {
+    const client = await getRedisClient();
     const key = `submission:${id}`;
-    const data = await kv.get<string>(key);
+    const data = await client.get(key);
     
     if (!data) {
       return null;
@@ -47,6 +91,14 @@ export async function getSubmission(id: string): Promise<Submission | null> {
     return JSON.parse(data) as Submission;
   } catch (error) {
     console.error("Error getting submission:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        redisUrl: process.env.REDIS_URL ? "Set" : "Not set",
+      });
+      throw error;
+    }
     throw new Error("Failed to retrieve submission");
   }
 }
@@ -58,6 +110,12 @@ export async function getSubmission(id: string): Promise<Submission | null> {
  */
 export async function createSubmission(data: NewSubmission): Promise<Submission> {
   try {
+    // Check if Redis connection is available
+    if (!process.env.REDIS_URL) {
+      throw new Error("REDIS_URL environment variable is not set");
+    }
+    
+    const client = await getRedisClient();
     const id = generateId();
     const createdAt = new Date().toISOString();
     
@@ -69,16 +127,28 @@ export async function createSubmission(data: NewSubmission): Promise<Submission>
     
     // Store submission data
     const submissionKey = `submission:${id}`;
-    await kv.set(submissionKey, JSON.stringify(submission));
+    await client.set(submissionKey, JSON.stringify(submission));
     
     // Add to index (sorted set) for ordering by creation date
     // Use timestamp as score for sorting (newest first = higher timestamp)
     const timestamp = new Date(createdAt).getTime();
-    await kv.zadd("submissions:index", { score: timestamp, member: id });
+    await client.zAdd("submissions:index", {
+      score: timestamp,
+      value: id,
+    });
     
     return submission;
   } catch (error) {
     console.error("Error creating submission:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        redisUrl: process.env.REDIS_URL ? "Set" : "Not set",
+      });
+      throw error; // Re-throw with original error message
+    }
     throw new Error("Failed to create submission");
   }
 }
@@ -88,10 +158,12 @@ export async function createSubmission(data: NewSubmission): Promise<Submission>
  */
 export async function getAllSubmissions(): Promise<Submission[]> {
   try {
+    const client = await getRedisClient();
+    
     // Get all submission IDs from the sorted set (newest first)
     // ZREVRANGE returns highest to lowest scores
-    const submissionIds = await kv.zrange<string[]>("submissions:index", 0, -1, {
-      rev: true, // Reverse order (newest first)
+    const submissionIds = await client.zRange("submissions:index", 0, -1, {
+      REV: true, // Reverse order (newest first)
     });
     
     if (submissionIds.length === 0) {
@@ -102,7 +174,7 @@ export async function getAllSubmissions(): Promise<Submission[]> {
     const submissionKeys = submissionIds.map((id) => `submission:${id}`);
     const submissions = await Promise.all(
       submissionKeys.map(async (key) => {
-        const data = await kv.get<string>(key);
+        const data = await client.get(key);
         if (!data) {
           return null;
         }
@@ -114,6 +186,14 @@ export async function getAllSubmissions(): Promise<Submission[]> {
     return submissions.filter((s): s is Submission => s !== null);
   } catch (error) {
     console.error("Error getting all submissions:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        redisUrl: process.env.REDIS_URL ? "Set" : "Not set",
+      });
+      throw error;
+    }
     throw new Error("Failed to retrieve submissions");
   }
 }
@@ -123,13 +203,14 @@ export async function getAllSubmissions(): Promise<Submission[]> {
  */
 export async function deleteSubmission(id: string): Promise<boolean> {
   try {
+    const client = await getRedisClient();
     const submissionKey = `submission:${id}`;
     
     // Delete the submission data
-    await kv.del(submissionKey);
+    await client.del(submissionKey);
     
     // Remove from index
-    await kv.zrem("submissions:index", id);
+    await client.zRem("submissions:index", id);
     
     return true;
   } catch (error) {
@@ -143,7 +224,8 @@ export async function deleteSubmission(id: string): Promise<boolean> {
  */
 export async function getSubmissionCount(): Promise<number> {
   try {
-    const count = await kv.zcard("submissions:index");
+    const client = await getRedisClient();
+    const count = await client.zCard("submissions:index");
     return count;
   } catch (error) {
     console.error("Error getting submission count:", error);

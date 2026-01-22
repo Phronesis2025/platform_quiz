@@ -167,16 +167,34 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error submitting quiz:", error);
     
-    // Return more detailed error in development
+    // Log the full error for debugging
+    if (error instanceof Error) {
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    
+    // Check if it's a Redis connection error
+    const isRedisError = error instanceof Error && (
+      error.message.includes("Redis") ||
+      error.message.includes("KV") ||
+      error.message.includes("connection") ||
+      error.message.includes("REDIS_URL")
+    );
+    
+    // Return more detailed error in development or for Redis errors
     const errorMessage =
-      process.env.NODE_ENV === "development"
+      process.env.NODE_ENV === "development" || isRedisError
         ? error instanceof Error
-          ? error.message
+          ? `${error.name}: ${error.message}`
           : "Failed to process quiz submission"
         : "Failed to process quiz submission";
 
     return NextResponse.json(
-      { error: errorMessage },
+      { 
+        error: errorMessage,
+        ...(isRedisError && { hint: "Check that REDIS_URL is set in Vercel environment variables" })
+      },
       { status: 500 }
     );
   }

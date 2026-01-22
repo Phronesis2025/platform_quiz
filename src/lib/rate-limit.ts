@@ -69,14 +69,14 @@ export function checkRateLimit(identifier: string): {
 }
 
 /**
- * Production rate limiter using Vercel KV (optional)
+ * Production rate limiter using Redis (optional)
  * 
  * To use this:
- * 1. Install @vercel/kv: npm install @vercel/kv
- * 2. Set KV_REST_API_URL and KV_REST_API_TOKEN environment variables
+ * 1. Install redis: npm install redis
+ * 2. Set REDIS_URL environment variable
  * 
  * This function will automatically fall back to in-memory rate limiting
- * if Vercel KV is not available.
+ * if Redis is not available.
  */
 export async function checkRateLimitKV(
   identifier: string
@@ -85,13 +85,9 @@ export async function checkRateLimitKV(
   remaining: number;
   resetAt: number;
 }> {
-  // Check if KV/Redis environment variables are set
-  // Vercel provides either REDIS_URL (direct connection) or KV_REST_API_URL + KV_REST_API_TOKEN (REST API)
-  const hasRedisConnection = process.env.REDIS_URL || 
-    (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-  
-  if (!hasRedisConnection) {
-    // Fallback to in-memory if KV is not configured
+  // Check if Redis environment variable is set
+  if (!process.env.REDIS_URL) {
+    // Fallback to in-memory if Redis is not configured
     return checkRateLimit(identifier);
   }
 
@@ -99,21 +95,31 @@ export async function checkRateLimitKV(
   // This will only attempt to load the module at runtime
   try {
     // Dynamic import using string to prevent webpack from analyzing it
-    const importPath = "@vercel/kv";
-    const kvModule = await import(/* @vite-ignore */ importPath).catch(() => null);
+    const importPath = "redis";
+    const redisModule = await import(/* @vite-ignore */ importPath).catch(() => null);
     
-    if (!kvModule || !kvModule.kv) {
+    if (!redisModule || !redisModule.createClient) {
       return checkRateLimit(identifier);
     }
 
-    const { kv } = kvModule;
+    const { createClient } = redisModule;
+    const client = createClient({
+      url: process.env.REDIS_URL,
+    });
+
+    // Connect if not already connected
+    if (!client.isOpen) {
+      await client.connect();
+    }
+
     const now = Date.now();
     const key = `rate_limit:${identifier}`;
     const windowStart = Math.floor(now / RATE_LIMIT_WINDOW_MS) * RATE_LIMIT_WINDOW_MS;
     const windowKey = `${key}:${windowStart}`;
 
     // Get current count
-    const count = ((await kv.get(windowKey)) as number | null) || 0;
+    const countStr = await client.get(windowKey);
+    const count = countStr ? parseInt(countStr, 10) : 0;
 
     if (count >= RATE_LIMIT_MAX_REQUESTS) {
       return {
@@ -124,8 +130,8 @@ export async function checkRateLimitKV(
     }
 
     // Increment count
-    await kv.incr(windowKey);
-    await kv.expire(windowKey, Math.ceil(RATE_LIMIT_WINDOW_MS / 1000));
+    await client.incr(windowKey);
+    await client.expire(windowKey, Math.ceil(RATE_LIMIT_WINDOW_MS / 1000));
 
     return {
       allowed: true,
@@ -133,8 +139,8 @@ export async function checkRateLimitKV(
       resetAt: windowStart + RATE_LIMIT_WINDOW_MS,
     };
   } catch (error) {
-    // Fallback to in-memory if KV is not available or fails
-    console.warn("Vercel KV not available, falling back to in-memory rate limiting:", error);
+    // Fallback to in-memory if Redis is not available or fails
+    console.warn("Redis not available, falling back to in-memory rate limiting:", error);
     return checkRateLimit(identifier);
   }
 }
