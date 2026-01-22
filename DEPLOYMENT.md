@@ -101,11 +101,15 @@ vercel login
 # Link your project
 vercel link
 
-# Pull all environment variables (includes REDIS_URL or KV_REST_API_URL)
+# Pull all environment variables (includes REDIS_URL and VERCEL_OIDC_TOKEN)
 vercel env pull .env.local
 ```
 
 This will automatically create/update your `.env.local` file with all the correct variables!
+
+**Note**: When you run `vercel env pull`, you'll get:
+- `REDIS_URL` - Your Redis connection string (required for the app)
+- `VERCEL_OIDC_TOKEN` - Vercel CLI authentication token (not needed by the app, but safe to keep)
 
 **Important Notes:**
 - Vercel usually provides `REDIS_URL` (direct connection string)
@@ -176,9 +180,13 @@ npm i -g vercel
 vercel login
 vercel link
 
-# Pull all environment variables (includes REDIS_URL or KV_REST_API_URL)
+# Pull all environment variables (includes REDIS_URL and VERCEL_OIDC_TOKEN)
 vercel env pull .env.local
 ```
+
+**What you'll get:**
+- `REDIS_URL` - Redis connection string (required for the app)
+- `VERCEL_OIDC_TOKEN` - Vercel CLI authentication token (not needed by the app, but safe to keep in `.env.local`)
 
 **Option 2: Manual Setup**
 
@@ -407,9 +415,13 @@ The admin page shows summary statistics:
    vercel login
    vercel link
    
-   # Pull environment variables (may include KV credentials)
+   # Pull environment variables (includes REDIS_URL and VERCEL_OIDC_TOKEN)
    vercel env pull .env.local
    ```
+   
+   This will create/update your `.env.local` with:
+   - `REDIS_URL` - Your Redis connection (required)
+   - `VERCEL_OIDC_TOKEN` - Vercel CLI token (not needed by app, but safe to keep)
 
 5. **Contact Vercel Support**:
    - If you still can't find the credentials, Vercel's interface may have changed
