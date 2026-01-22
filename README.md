@@ -17,7 +17,7 @@ A Next.js 14+ quiz application built with TypeScript, Tailwind CSS, and the App 
 
 - Node.js 18+ installed
 - npm or yarn package manager
-- Vercel Postgres database (or local Postgres for development)
+- Vercel KV (Redis) database (or local Redis for development)
 
 ### Installation
 
@@ -32,30 +32,19 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```env
-POSTGRES_URL=postgresql://user:password@host:port/database
+KV_REST_API_URL=https://your-kv-instance.vercel-storage.com
+KV_REST_API_TOKEN=your-kv-token-here
 ```
 
-Get your connection string from your Vercel dashboard: **Settings** > **Storage** > **Postgres**
+Get your connection details from your Vercel dashboard: **Settings** > **Storage** > **KV**
 
-3. Run database migrations:
-
-```bash
-npm run db:push
-```
-
-This will create the `submissions` table in your database.
-
-4. Run the development server:
+3. Run the development server:
 
 ```bash
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Database Setup
-
-For detailed database setup instructions, see [README-DATABASE.md](./README-DATABASE.md).
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Building for Production
 
@@ -86,23 +75,26 @@ app/
 - **TypeScript** - Type-safe JavaScript
 - **Tailwind CSS** - Utility-first CSS framework
 - **React** - UI library
-- **Vercel Postgres** - Serverless PostgreSQL database
-- **Drizzle ORM** - Type-safe SQL ORM
+- **Vercel KV** - Serverless Redis database for data persistence
 
 ## Database
 
-This project uses Vercel Postgres with Drizzle ORM for data persistence. Quiz submissions are stored in a `submissions` table with the following structure:
+This project uses Vercel KV (Redis) for data persistence. Quiz submissions are stored in Redis with the following structure:
 
 - Quiz responses and answers
 - Calculated role fit scores
 - User metadata (name, team)
 - Request metadata (user agent, IP hash)
 
-See [README-DATABASE.md](./README-DATABASE.md) for detailed setup instructions.
+Data is stored using Redis key patterns:
+- `submission:{id}` - Individual submission data (JSON)
+- `submissions:index` - Sorted set for ordering by creation date
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed setup instructions.
 
 ## Notes
 
-- Quiz results are stored in Vercel Postgres database
+- Quiz results are stored in Vercel KV (Redis) database
 - Admin page is structured to easily add authentication later
 - All routes are functional and include navigation between pages
 - IP addresses are hashed for privacy (SHA-256)

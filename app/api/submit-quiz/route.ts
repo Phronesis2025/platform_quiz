@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { scoreResponses, type QuizResponses, type RoleId } from "@/src/lib/quiz";
-import { db } from "@/src/lib/db";
-import { submissions } from "@/src/lib/schema";
+import { scoreResponses, type QuizResponses } from "@/src/lib/quiz";
+import { createSubmission, getSubmission } from "@/src/lib/db";
 import { hashIP, getIPAddress } from "@/src/lib/utils";
-import { eq } from "drizzle-orm";
 import { submissionRequestSchema } from "@/src/lib/validation";
 import { getRateLimiter } from "@/src/lib/rate-limit";
 
@@ -111,35 +109,28 @@ export async function POST(request: NextRequest) {
     // Never trust any scores from the client - always recalculate
     const scoringResult = scoreResponses(quizResponses);
 
-    // Insert submission into database
+    // Create submission in Redis
     // Store both raw answers AND computed results
-    const [submission] = await db
-      .insert(submissions)
-      .values({
-        name: name?.trim() || null,
-        team: team?.trim() || null,
-        // Store raw answers (never modified)
-        answers: quizResponses,
-        // Store computed totals (calculated server-side)
-        totals: scoringResult.totals,
-        // Store computed ranked roles (calculated server-side)
-        rankedRoles: scoringResult.ranked,
-        // Store computed primary role (calculated server-side)
-        primaryRole:
-          typeof scoringResult.primaryRole === "string"
-            ? scoringResult.primaryRole
-            : scoringResult.primaryRole,
-        secondaryRole: scoringResult.secondaryRole || null,
-        // Store computed narrative (generated server-side)
-        summaryText: scoringResult.narrative,
-        userAgent,
-        ipHash,
-      })
-      .returning();
-
-    if (!submission) {
-      throw new Error("Failed to create submission");
-    }
+    const submission = await createSubmission({
+      name: name?.trim() || null,
+      team: team?.trim() || null,
+      // Store raw answers (never modified)
+      answers: quizResponses,
+      // Store computed totals (calculated server-side)
+      totals: scoringResult.totals,
+      // Store computed ranked roles (calculated server-side)
+      rankedRoles: scoringResult.ranked,
+      // Store computed primary role (calculated server-side)
+      primaryRole:
+        typeof scoringResult.primaryRole === "string"
+          ? scoringResult.primaryRole
+          : scoringResult.primaryRole,
+      secondaryRole: scoringResult.secondaryRole || null,
+      // Store computed narrative (generated server-side)
+      summaryText: scoringResult.narrative,
+      userAgent,
+      ipHash,
+    });
 
     // Return success response with submission ID
     // Return computed scores (never trust client-provided scores)
@@ -161,7 +152,7 @@ export async function POST(request: NextRequest) {
             tieDetected: scoringResult.tieDetected,
             narrative: submission.summaryText,
           },
-          timestamp: submission.createdAt.toISOString(),
+          timestamp: submission.createdAt,
         },
       },
       {
@@ -217,12 +208,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Query submission from database
-    const [submission] = await db
-      .select()
-      .from(submissions)
-      .where(eq(submissions.id, id))
-      .limit(1);
+    // Get submission from Redis
+    const submission = await getSubmission(id);
 
     if (!submission) {
       return NextResponse.json(
@@ -246,7 +233,7 @@ export async function GET(request: NextRequest) {
           secondaryRole: submission.secondaryRole, // Server-computed
           narrative: submission.summaryText, // Server-computed
         },
-        timestamp: submission.createdAt.toISOString(),
+        timestamp: submission.createdAt,
       },
       { status: 200 }
     );

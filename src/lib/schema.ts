@@ -1,45 +1,55 @@
-import { pgTable, uuid, timestamp, varchar, jsonb, text } from "drizzle-orm/pg-core";
-import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
+/**
+ * TypeScript types for quiz submissions stored in Redis
+ * 
+ * Redis stores submissions as JSON strings with the following structure.
+ * We use a key pattern: "submission:{id}" for individual submissions
+ * and a sorted set "submissions:index" for ordering by creation date.
+ */
 
 /**
- * Database schema for quiz submissions
- * 
- * This table stores all quiz submissions with their responses and scoring results.
+ * Submission data structure stored in Redis
  */
-export const submissions = pgTable("submissions", {
+export interface Submission {
   // Primary key: UUID
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: string;
   
-  // Timestamp when the submission was created
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // Timestamp when the submission was created (ISO string)
+  createdAt: string;
   
   // Optional user information
-  name: varchar("name", { length: 255 }),
-  team: varchar("team", { length: 255 }),
+  name: string | null;
+  team: string | null;
   
   // Quiz responses: JSON object mapping question IDs to responses
-  answers: jsonb("answers").notNull(),
+  answers: Record<string, unknown>;
   
   // Scoring totals: JSON object with role scores
-  totals: jsonb("totals").notNull(),
+  totals: Record<string, number>;
   
   // Ranked roles: JSON array of ranked role results
-  rankedRoles: jsonb("ranked_roles").notNull(),
+  rankedRoles: Array<{ roleId: string; score: number; rank: number }>;
   
   // Primary role (can be single role ID or "Role1 + Role2" format)
-  primaryRole: varchar("primary_role", { length: 50 }).notNull(),
+  primaryRole: string;
   
   // Secondary role (optional)
-  secondaryRole: varchar("secondary_role", { length: 50 }),
+  secondaryRole: string | null;
   
   // Narrative summary text
-  summaryText: text("summary_text").notNull(),
+  summaryText: string;
   
   // Optional metadata
-  userAgent: varchar("user_agent", { length: 500 }),
-  ipHash: varchar("ip_hash", { length: 64 }), // SHA-256 hash of IP address
-});
+  userAgent: string | null;
+  ipHash: string | null; // SHA-256 hash of IP address
+}
 
-// TypeScript types for type-safe database operations
-export type Submission = InferSelectModel<typeof submissions>;
-export type NewSubmission = InferInsertModel<typeof submissions>;
+/**
+ * Type for creating a new submission (without id and createdAt)
+ */
+export type NewSubmission = Omit<Submission, "id" | "createdAt">;
+
+/**
+ * Redis key patterns used in this application:
+ * - "submission:{id}" - Individual submission data (JSON string)
+ * - "submissions:index" - Sorted set with submission IDs and timestamps (for ordering)
+ */

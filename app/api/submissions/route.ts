@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/src/lib/db";
-import { submissions } from "@/src/lib/schema";
-import { desc } from "drizzle-orm";
+import { getAllSubmissions } from "@/src/lib/db";
 
 // Force dynamic rendering - this route should never be statically generated
 export const dynamic = "force-dynamic";
@@ -14,16 +12,13 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Query all submissions from database, sorted by creation date (newest first)
-    const allSubmissions = await db
-      .select()
-      .from(submissions)
-      .orderBy(desc(submissions.createdAt));
+    // Get all submissions from Redis, sorted by creation date (newest first)
+    const allSubmissions = await getAllSubmissions();
 
     // Transform submissions to match the expected format
     const formattedSubmissions = allSubmissions.map((submission) => {
       // Calculate score spread (range between highest and lowest scores)
-      const totals = submission.totals as Record<string, number>;
+      const totals = submission.totals;
       const scores = Object.values(totals);
       const maxScore = Math.max(...scores);
       const minScore = Math.min(...scores);
@@ -31,7 +26,7 @@ export async function GET(request: NextRequest) {
 
       return {
         id: submission.id,
-        createdAt: submission.createdAt.toISOString(),
+        createdAt: submission.createdAt,
         name: submission.name,
         team: submission.team,
         primaryRole: submission.primaryRole,
