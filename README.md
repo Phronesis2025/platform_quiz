@@ -32,11 +32,14 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```env
-KV_REST_API_URL=https://your-kv-instance.vercel-storage.com
-KV_REST_API_TOKEN=your-kv-token-here
+# Vercel automatically provides REDIS_URL when you create a KV database
+# Use: vercel env pull .env.local (recommended)
+# Or manually set:
+REDIS_URL=redis://default:password@host:port
 ```
 
 Get your connection details from your Vercel dashboard: **Settings** > **Storage** > **KV**
+Or use `vercel env pull .env.local` to automatically get all environment variables.
 
 3. Run the development server:
 

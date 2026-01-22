@@ -85,8 +85,12 @@ export async function checkRateLimitKV(
   remaining: number;
   resetAt: number;
 }> {
-  // Check if KV environment variables are set
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+  // Check if KV/Redis environment variables are set
+  // Vercel provides either REDIS_URL (direct connection) or KV_REST_API_URL + KV_REST_API_TOKEN (REST API)
+  const hasRedisConnection = process.env.REDIS_URL || 
+    (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  
+  if (!hasRedisConnection) {
     // Fallback to in-memory if KV is not configured
     return checkRateLimit(identifier);
   }
@@ -139,12 +143,12 @@ export async function checkRateLimitKV(
  * Get the appropriate rate limiter based on environment
  */
 export async function getRateLimiter(identifier: string) {
-  // Use Vercel KV in production if available
-  if (
-    process.env.KV_REST_API_URL &&
-    process.env.KV_REST_API_TOKEN &&
-    process.env.NODE_ENV === "production"
-  ) {
+  // Use Vercel KV/Redis in production if available
+  // Vercel provides either REDIS_URL or KV_REST_API_URL + KV_REST_API_TOKEN
+  const hasRedisConnection = process.env.REDIS_URL || 
+    (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  
+  if (hasRedisConnection && process.env.NODE_ENV === "production") {
     return checkRateLimitKV(identifier);
   }
   

@@ -52,21 +52,30 @@ This guide covers everything you need to deploy and manage the Platform Quiz app
 
 After creating the KV database, you need to get the connection credentials. Here are detailed steps:
 
-**Method 1: From the Storage Tab (Easiest)**
+**Method 1: Check Environment Variables (Easiest - Recommended)**
+
+Vercel automatically adds the Redis connection variables when you create the KV database:
+
+1. Go to **Settings** > **Environment Variables**
+2. Look for `REDIS_URL` (most common) or `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+3. **If they're there**: Perfect! Vercel auto-configured them. You can skip to Step 3.
+4. **If they're not there**: Continue with the methods below
+
+**Method 2: From the Storage Tab**
 
 1. In your Vercel project dashboard, go to the **Storage** tab
 2. You should see your KV database listed (e.g., "platform-quiz-kv")
 3. Click on the database name to open it
 4. You'll see a page with database details. Look for:
-   - **REST API URL** - This is your `KV_REST_API_URL`
+   - **REDIS_URL** or **Connection String** - Direct Redis connection
+     - Format: `redis://default:password@host:port`
+   - **OR REST API URL** - This is your `KV_REST_API_URL` (if using REST API)
      - Format: `https://xxx.vercel-storage.com`
-     - Copy this entire URL
-   - **REST API Token** - This is your `KV_REST_API_TOKEN`
+   - **REST API Token** - This is your `KV_REST_API_TOKEN` (if using REST API)
      - This is a long alphanumeric string
      - Click the "Show" or "Reveal" button if it's hidden
-     - Copy the entire token
 
-**Method 2: From Project Settings**
+**Method 3: From Project Settings**
 
 1. Go to your Vercel project dashboard
 2. Click on the **Settings** tab
@@ -74,13 +83,13 @@ After creating the KV database, you need to get the connection credentials. Here
 4. Find your KV database in the list
 5. Click on the database name
 6. You'll see the connection details including:
-   - REST API URL
-   - REST API Token
-7. Copy both values
+   - `REDIS_URL` (direct connection string) - OR
+   - REST API URL and Token (if using REST API)
+7. Copy the values you see
 
-**Method 3: Using Vercel CLI (Alternative)**
+**Method 4: Using Vercel CLI (Easiest for Local Development)**
 
-If you have Vercel CLI installed, you can also get the connection details:
+This automatically pulls all environment variables including Redis connection:
 
 ```bash
 # Install Vercel CLI if you haven't
@@ -92,34 +101,45 @@ vercel login
 # Link your project
 vercel link
 
-# Pull environment variables (this will include KV credentials if auto-configured)
+# Pull all environment variables (includes REDIS_URL or KV_REST_API_URL)
 vercel env pull .env.local
 ```
 
+This will automatically create/update your `.env.local` file with all the correct variables!
+
 **Important Notes:**
-- The REST API URL should start with `https://` and end with `.vercel-storage.com`
-- The REST API Token is a long string - make sure to copy it completely
-- If you don't see these values, make sure you're looking at the correct database
-- Some Vercel interfaces may show these as "Endpoint URL" and "Token" instead
+- Vercel usually provides `REDIS_URL` (direct connection string)
+- Format: `redis://default:password@host:port`
+- If you see `KV_REST_API_URL` instead, you'll also need `KV_REST_API_TOKEN`
+- The `@vercel/kv` package automatically detects and uses whichever is available
+- **You usually don't need to manually copy these** - use `vercel env pull` instead
 
 ### Step 3: Add Environment Variables
 
-**First, check if Vercel already added them automatically:**
+**Vercel Auto-Configures This!**
+
+When you create a KV database, Vercel **automatically** adds the connection variables:
 
 1. Go to **Settings** > **Environment Variables**
-2. Look for `KV_REST_API_URL` and `KV_REST_API_TOKEN` in the list
-3. **If they're already there**: Great! Vercel auto-configured them. You can skip to Step 4.
-4. **If they're not there**: Continue with the steps below
+2. Look for `REDIS_URL` (most common) or `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+3. **If they're already there**: Perfect! Vercel auto-configured them. You're done! ✅
+4. **If they're not there**: This is unusual - try refreshing the page or check if the database was created correctly
 
-**Manual Setup (if needed):**
+**Manual Setup (usually not needed):**
+
+Only do this if Vercel didn't auto-configure the variables:
 
 1. In your Vercel project, go to **Settings** > **Environment Variables**
-2. Click **Add New** for each variable:
-   - **Key**: `KV_REST_API_URL`
-     - **Value**: Paste your REST API URL (from Step 2)
+2. Click **Add New** for the variable:
+   - **If you have `REDIS_URL`**: 
+     - **Key**: `REDIS_URL`
+     - **Value**: Your Redis connection string (from Step 2)
      - **Environments**: Select all (Production, Preview, Development)
-   - **Key**: `KV_REST_API_TOKEN`
-     - **Value**: Paste your REST API Token (from Step 2)
+   - **If you have REST API credentials**:
+     - **Key**: `KV_REST_API_URL`
+     - **Value**: Your REST API URL
+     - **Key**: `KV_REST_API_TOKEN`
+     - **Value**: Your REST API Token
      - **Environments**: Select all (Production, Preview, Development)
 3. Click **Save** for each variable
 
@@ -129,21 +149,49 @@ vercel env pull .env.local
 
 ### Required Variables
 
+Vercel automatically provides Redis connection variables when you create a KV database. You'll get **one of these options**:
+
 | Variable | Description | Where to Get It |
 |----------|-------------|-----------------|
-| `KV_REST_API_URL` | Vercel KV REST API URL | Vercel Dashboard > Storage > KV > Settings |
-| `KV_REST_API_TOKEN` | Vercel KV REST API token | Vercel Dashboard > Storage > KV > Settings |
+| `REDIS_URL` | Direct Redis connection string (most common) | Automatically provided by Vercel |
+| `KV_REST_API_URL` | Vercel KV REST API URL (alternative) | Vercel Dashboard > Storage > KV > Settings |
+| `KV_REST_API_TOKEN` | Vercel KV REST API token (if using REST API) | Vercel Dashboard > Storage > KV > Settings |
 | `NEXT_PUBLIC_QUIZ_CODE` | Access code for quiz (optional) | Set your own secret code |
+
+**Note**: The `@vercel/kv` package automatically detects and uses whichever variables Vercel provides. You don't need to manually set these - Vercel does it automatically when you create the KV database.
 
 ### Setting Environment Variables
 
 #### Local Development
 
-Create a `.env.local` file in the project root:
+**Option 1: Pull from Vercel (Recommended)**
+
+Use Vercel CLI to automatically pull all environment variables:
+
+```bash
+# Install Vercel CLI if you haven't
+npm i -g vercel
+
+# Login and link your project
+vercel login
+vercel link
+
+# Pull all environment variables (includes REDIS_URL or KV_REST_API_URL)
+vercel env pull .env.local
+```
+
+**Option 2: Manual Setup**
+
+If you prefer to set it up manually, create a `.env.local` file:
 
 ```env
-KV_REST_API_URL=https://your-kv-instance.vercel-storage.com
-KV_REST_API_TOKEN=your-kv-token-here
+# Vercel will provide one of these when you create the KV database:
+# Either REDIS_URL (direct connection) or KV_REST_API_URL + KV_REST_API_TOKEN (REST API)
+REDIS_URL=redis://default:password@host:port
+# OR
+# KV_REST_API_URL=https://your-kv-instance.vercel-storage.com
+# KV_REST_API_TOKEN=your-kv-token-here
+
 NEXT_PUBLIC_QUIZ_CODE=your-secret-code-here
 ```
 
@@ -318,13 +366,15 @@ The admin page shows summary statistics:
 
 ### Database Connection Issues
 
-**Error**: `KV_REST_API_URL` or `KV_REST_API_TOKEN` not found
+**Error**: `REDIS_URL` or `KV_REST_API_URL` not found
 
 **Solution**:
-1. Verify `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set in Vercel environment variables
-2. Check that the values are correct (no extra spaces, correct format)
-3. Ensure the KV database is active in Vercel dashboard
-4. Redeploy after adding environment variables
+1. **Check if Vercel auto-configured it**: Go to **Settings** > **Environment Variables** and look for `REDIS_URL` (most common) or `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+2. If they're missing, the KV database might not be properly linked to your project
+3. Try re-linking: Go to **Storage** tab → Click your KV database → Make sure it's linked to your project
+4. Check that the values are correct (no extra spaces, correct format)
+5. Ensure the KV database is active in Vercel dashboard
+6. Redeploy after verifying environment variables
 
 ### Can't Find KV Connection Details
 
@@ -333,10 +383,10 @@ The admin page shows summary statistics:
 **Solutions**:
 
 1. **Check if Vercel Auto-Configured It**:
-   - Sometimes Vercel automatically adds KV environment variables when you create the database
+   - Vercel **automatically** adds Redis environment variables when you create the database
    - Go to **Settings** > **Environment Variables**
-   - Look for `KV_REST_API_URL` and `KV_REST_API_TOKEN` - they might already be there!
-   - If they exist, you can skip manual setup
+   - Look for `REDIS_URL` (most common) or `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+   - They should already be there! If not, the database might not be properly linked
 
 2. **Try Different Navigation Paths**:
    - **Path 1**: Storage tab → Click database name → Look for "Connection" or "API" section
@@ -346,7 +396,9 @@ The admin page shows summary statistics:
 3. **Check the Database Overview Page**:
    - When you click on your KV database, you should see an overview page
    - Look for tabs or sections like: "Overview", "Settings", "API", "Connection"
-   - The REST API URL and Token are usually in the "API" or "Connection" section
+   - You'll see either:
+     - `REDIS_URL` (direct connection string) - OR
+     - REST API URL and Token in the "API" or "Connection" section
 
 4. **Use Vercel CLI** (if dashboard is unclear):
    ```bash
@@ -383,7 +435,7 @@ The admin page shows summary statistics:
 2. Adjust rate limit settings in `src/lib/rate-limit.ts`:
    - `RATE_LIMIT_MAX_REQUESTS`: Increase from 5 if needed
    - `RATE_LIMIT_WINDOW_MS`: Adjust time window
-3. Ensure `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set for production rate limiting
+3. Ensure `REDIS_URL` (or `KV_REST_API_URL` and `KV_REST_API_TOKEN`) are set for production rate limiting
 
 ### Build Errors
 
@@ -403,14 +455,14 @@ The admin page shows summary statistics:
 1. Check browser console for errors
 2. Verify `/api/submissions` endpoint is accessible
 3. Check that KV connection is working
-4. Verify `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set correctly
+4. Verify `REDIS_URL` (or `KV_REST_API_URL` and `KV_REST_API_TOKEN`) are set correctly
 
 ### Data Not Persisting
 
 **Symptoms**: Submissions are not being saved
 
 **Solutions**:
-1. Check that `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set correctly
+1. Check that `REDIS_URL` (or `KV_REST_API_URL` and `KV_REST_API_TOKEN`) are set correctly
 2. Verify the KV database is active in Vercel dashboard
 3. Check server logs for errors
 4. Ensure the API route is working: Test `/api/submit-quiz` endpoint

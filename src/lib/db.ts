@@ -6,12 +6,19 @@ import { randomUUID } from "crypto";
  * Database operations using Vercel KV (Redis)
  * 
  * This uses the @vercel/kv package which automatically reads from
- * environment variables:
+ * environment variables. Vercel provides one of these options:
+ * 
+ * Option 1 (REST API):
  * - KV_REST_API_URL (required)
  * - KV_REST_API_TOKEN (required)
  * 
+ * Option 2 (Direct Redis connection):
+ * - REDIS_URL (required) - Redis connection string
+ * 
+ * The @vercel/kv package will automatically use whichever is available.
+ * 
  * For local development, set these in .env.local
- * For Vercel deployment, set them in the Vercel dashboard
+ * For Vercel deployment, Vercel automatically provides the correct variables
  * 
  * Redis Key Patterns:
  * - "submission:{id}" - Stores individual submission as JSON

@@ -6,11 +6,11 @@ This document addresses common Vercel deployment issues and their solutions.
 
 ### Issue 1: Build Fails with Database Connection Error
 
-**Error**: `KV_REST_API_URL` or `KV_REST_API_TOKEN` not found
+**Error**: `REDIS_URL` or `KV_REST_API_URL` not found
 
 **Cause**: Next.js tries to statically generate API routes during build, and they attempt to connect to the database.
 
-**Solution**: API routes are now marked with `export const dynamic = "force-dynamic"` to prevent static generation. However, the actual connection only happens at runtime, so this shouldn't cause build failures.
+**Solution**: API routes are now marked with `export const dynamic = "force-dynamic"` to prevent static generation. However, the actual connection only happens at runtime, so this shouldn't cause build failures. Vercel automatically provides `REDIS_URL` when you create a KV database.
 
 **Files Updated**:
 - `app/api/submissions/route.ts` - Added `export const dynamic = "force-dynamic"`
@@ -23,9 +23,10 @@ This document addresses common Vercel deployment issues and their solutions.
 **Solution**: Ensure these environment variables are set in Vercel:
 
 1. Go to Vercel Dashboard > Your Project > Settings > Environment Variables
-2. Add:
-   - `KV_REST_API_URL` (required) - Your Vercel KV REST API URL
-   - `KV_REST_API_TOKEN` (required) - Your Vercel KV REST API Token
+2. **Check if Vercel auto-configured it**: Look for `REDIS_URL` (most common) - it should already be there!
+3. If not, add:
+   - `REDIS_URL` (required) - Your Redis connection string (usually auto-provided)
+   - OR `KV_REST_API_URL` + `KV_REST_API_TOKEN` (if using REST API method)
    - `NEXT_PUBLIC_QUIZ_CODE` (optional) - Access code for quiz
 
 3. **Important**: After adding variables, trigger a new deployment:
@@ -69,8 +70,8 @@ Before deploying to Vercel:
 - [ ] All code is committed and pushed to GitHub
 - [ ] Repository is connected to Vercel
 - [ ] Vercel KV database is created
-- [ ] `KV_REST_API_URL` environment variable is set in Vercel
-- [ ] `KV_REST_API_TOKEN` environment variable is set in Vercel
+- [ ] `REDIS_URL` environment variable is set in Vercel (usually auto-configured)
+- [ ] OR `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set (if using REST API)
 - [ ] `NEXT_PUBLIC_QUIZ_CODE` is set (if using access code)
 - [ ] Build passes locally: `npm run build`
 
@@ -101,6 +102,6 @@ If deployment still fails:
    - "Module not found" → Check package.json dependencies, run `npm install`
    - "Type error" → Run `npm run build` locally to see TypeScript errors
    - "Missing environment variable" → Add it in Vercel dashboard
-   - "Database connection failed" → Check KV_REST_API_URL and KV_REST_API_TOKEN are set correctly
+   - "Database connection failed" → Check REDIS_URL (or KV_REST_API_URL/KV_REST_API_TOKEN) are set correctly
 
 3. **Share the Error**: Copy the exact error message from Vercel build logs for troubleshooting
