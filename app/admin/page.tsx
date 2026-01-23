@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ROLES, type RoleId } from "@/src/lib/quiz";
 
 // Type definition for submission
@@ -15,13 +16,31 @@ interface Submission {
   totals: Record<RoleId, number>;
   rankedRoles: Array<{ roleId: RoleId; score: number; rank: number }>;
   scoreSpread: number;
+  skillProfile?: {
+    tags: string[];
+    tagFrequency: Record<string, number>;
+  };
+  evidenceHighlights?: Array<{
+    questionId: number;
+    questionPrompt: string;
+    optionText: string;
+    evidence: string;
+    signals: string[];
+    score: number;
+  }>;
+  primaryRecommendations?: string[];
+  secondaryRecommendations?: string[];
+  summaryText?: string;
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<string>("");
   const [roleFilter, setRoleFilter] = useState<string>("");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
   useEffect(() => {
     // Fetch all submissions from API
@@ -97,6 +116,68 @@ export default function AdminPage() {
     return ROLES[roleString as RoleId]?.label || roleString;
   };
 
+  // Get top 3 skill tags from a submission
+  const getTopSkillTags = (submission: Submission): string[] => {
+    if (!submission.skillProfile || !submission.skillProfile.tags) {
+      return [];
+    }
+    return [...submission.skillProfile.tags]
+      .sort((a, b) => {
+        const freqA = submission.skillProfile!.tagFrequency[a] || 0;
+        const freqB = submission.skillProfile!.tagFrequency[b] || 0;
+        if (freqB !== freqA) {
+          return freqB - freqA;
+        }
+        return a.localeCompare(b);
+      })
+      .slice(0, 3);
+  };
+
+  // Calculate aggregate role counts
+  const roleCounts = useMemo(() => {
+    const primaryCounts: Record<string, number> = {};
+    const secondaryCounts: Record<string, number> = {};
+
+    filteredSubmissions.forEach((sub) => {
+      // Count primary roles (handle "Role1 + Role2" format)
+      if (sub.primaryRole.includes(" + ")) {
+        sub.primaryRole.split(" + ").forEach((role) => {
+          primaryCounts[role] = (primaryCounts[role] || 0) + 1;
+        });
+      } else {
+        primaryCounts[sub.primaryRole] = (primaryCounts[sub.primaryRole] || 0) + 1;
+      }
+
+      // Count secondary roles
+      if (sub.secondaryRole) {
+        secondaryCounts[sub.secondaryRole] = (secondaryCounts[sub.secondaryRole] || 0) + 1;
+      }
+    });
+
+    return { primaryCounts, secondaryCounts };
+  }, [filteredSubmissions]);
+
+  // Handle logout
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const response = await fetch("/api/admin/logout", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        // Redirect to login page
+        router.push("/admin/login");
+      } else {
+        console.error("Logout failed");
+        setIsLoggingOut(false);
+      }
+    } catch (error) {
+      console.error("Error during logout:", error);
+      setIsLoggingOut(false);
+    }
+  };
+
   // Export to CSV
   const exportToCSV = () => {
     const headers = [
@@ -105,6 +186,13 @@ export default function AdminPage() {
       "Team",
       "Primary Role",
       "Secondary Role",
+      "Role Rank 1",
+      "Role Rank 2",
+      "Role Rank 3",
+      "Role Rank 4",
+      "Top Skill 1",
+      "Top Skill 2",
+      "Top Skill 3",
       "Score Spread",
       "BE Score",
       "FE Score",
@@ -112,18 +200,32 @@ export default function AdminPage() {
       "PM Score",
     ];
 
-    const rows = filteredSubmissions.map((sub) => [
-      new Date(sub.createdAt).toLocaleString(),
-      sub.name || "",
-      sub.team || "",
-      formatRoleLabel(sub.primaryRole),
-      sub.secondaryRole ? ROLES[sub.secondaryRole as RoleId]?.label || sub.secondaryRole : "",
-      sub.scoreSpread.toString(),
-      sub.totals.BE.toString(),
-      sub.totals.FE.toString(),
-      sub.totals.QA.toString(),
-      sub.totals.PM.toString(),
-    ]);
+    const rows = filteredSubmissions.map((sub) => {
+      const topSkills = getTopSkillTags(sub);
+      const rankedRoles = sub.rankedRoles
+        .sort((a, b) => a.rank - b.rank)
+        .map((r) => ROLES[r.roleId]?.label || r.roleId);
+
+      return [
+        new Date(sub.createdAt).toLocaleString(),
+        sub.name || "",
+        sub.team || "",
+        formatRoleLabel(sub.primaryRole),
+        sub.secondaryRole ? ROLES[sub.secondaryRole as RoleId]?.label || sub.secondaryRole : "",
+        rankedRoles[0] || "",
+        rankedRoles[1] || "",
+        rankedRoles[2] || "",
+        rankedRoles[3] || "",
+        topSkills[0] || "",
+        topSkills[1] || "",
+        topSkills[2] || "",
+        sub.scoreSpread.toString(),
+        sub.totals.BE.toString(),
+        sub.totals.FE.toString(),
+        sub.totals.QA.toString(),
+        sub.totals.PM.toString(),
+      ];
+    });
 
     const csvContent = [
       headers.join(","),
@@ -153,13 +255,20 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-8 md:py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Navigation */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Link
             href="/"
             className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
           >
             ← Back to Home
           </Link>
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors duration-200"
+          >
+            {isLoggingOut ? "Logging out..." : "Logout"}
+          </button>
         </div>
 
         {/* Page header */}
@@ -287,10 +396,10 @@ export default function AdminPage() {
                       Team
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Primary Role
+                      Primary + Secondary Role
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Secondary Role
+                      Top 3 Skills
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Score Spread
@@ -319,18 +428,32 @@ export default function AdminPage() {
                           <span className="text-gray-400 italic">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                          {formatRoleLabel(submission.primaryRole)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        {submission.secondaryRole ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                            {ROLES[submission.secondaryRole as RoleId]?.label || submission.secondaryRole}
+                      <td className="px-4 py-4 text-sm">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            {formatRoleLabel(submission.primaryRole)}
                           </span>
+                          {submission.secondaryRole && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                              {ROLES[submission.secondaryRole as RoleId]?.label || submission.secondaryRole}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm">
+                        {getTopSkillTags(submission).length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {getTopSkillTags(submission).map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
-                          <span className="text-gray-400 italic">—</span>
+                          <span className="text-gray-400 italic text-xs">—</span>
                         )}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -338,12 +461,12 @@ export default function AdminPage() {
                         <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <Link
-                          href={`/result/${submission.id}`}
+                        <button
+                          onClick={() => setSelectedSubmission(submission)}
                           className="text-blue-600 dark:text-blue-400 hover:underline"
                         >
-                          View
-                        </Link>
+                          View Details
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -353,13 +476,15 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Summary statistics */}
+        {/* Aggregate View: Role Distribution */}
         {filteredSubmissions.length > 0 && (
           <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Summary
+              Team Balance Overview
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                   Total Submissions
@@ -393,22 +518,327 @@ export default function AdminPage() {
                 </div>
                 <div className="text-lg font-bold text-gray-900 dark:text-white">
                   {(() => {
-                    const roleCounts: Record<string, number> = {};
-                    filteredSubmissions.forEach((s) => {
-                      const roles = s.primaryRole.includes(" + ")
-                        ? s.primaryRole.split(" + ")
-                        : [s.primaryRole];
-                      roles.forEach((r) => {
-                        roleCounts[r] = (roleCounts[r] || 0) + 1;
-                      });
-                    });
-                    const mostCommon = Object.entries(roleCounts).sort(
+                    const mostCommon = Object.entries(roleCounts.primaryCounts).sort(
                       (a, b) => b[1] - a[1]
                     )[0];
                     return mostCommon
                       ? ROLES[mostCommon[0] as RoleId]?.label || mostCommon[0]
                       : "—";
                   })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Primary Role Distribution */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                Primary Role Distribution
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
+                  const count = roleCounts.primaryCounts[roleId] || 0;
+                  const percentage = filteredSubmissions.length > 0
+                    ? Math.round((count / filteredSubmissions.length) * 100)
+                    : 0;
+                  const maxCount = Math.max(...Object.values(roleCounts.primaryCounts), 1);
+                  const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+                  return (
+                    <div key={roleId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {ROLES[roleId].label}
+                        </span>
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">
+                          {count}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-1">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{ width: `${barWidth}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {percentage}% of submissions
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Secondary Role Distribution */}
+            {Object.keys(roleCounts.secondaryCounts).length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  Secondary Role Distribution
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
+                    const count = roleCounts.secondaryCounts[roleId] || 0;
+                    const totalWithSecondary = Object.values(roleCounts.secondaryCounts).reduce(
+                      (sum, c) => sum + c,
+                      0
+                    );
+                    const percentage = totalWithSecondary > 0
+                      ? Math.round((count / totalWithSecondary) * 100)
+                      : 0;
+                    const maxCount = Math.max(...Object.values(roleCounts.secondaryCounts), 1);
+                    const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+                    return (
+                      <div key={roleId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {ROLES[roleId].label}
+                          </span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white">
+                            {count}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-1">
+                          <div
+                            className="bg-indigo-600 h-2 rounded-full transition-all"
+                            style={{ width: `${barWidth}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {percentage}% of secondary roles
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Detail Modal */}
+        {selectedSubmission && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedSubmission(null)}
+          >
+            <div
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Submission Details
+                </h2>
+                <button
+                  onClick={() => setSelectedSubmission(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Basic Info */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Name:</span>
+                      <p className="text-gray-900 dark:text-white">
+                        {selectedSubmission.name || "Anonymous"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Team:</span>
+                      <p className="text-gray-900 dark:text-white">
+                        {selectedSubmission.team || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Date:</span>
+                      <p className="text-gray-900 dark:text-white">
+                        {new Date(selectedSubmission.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Score Spread:</span>
+                      <p className="text-gray-900 dark:text-white">{selectedSubmission.scoreSpread} pts</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Role Rankings */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                    Role Rankings
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedSubmission.rankedRoles
+                      .sort((a, b) => a.rank - b.rank)
+                      .map((ranked) => {
+                        const role = ROLES[ranked.roleId];
+                        const maxScore = Math.max(...Object.values(selectedSubmission.totals));
+                        const percentage = maxScore > 0 ? Math.round((ranked.score / maxScore) * 100) : 0;
+                        const isPrimary = ranked.roleId === (selectedSubmission.primaryRole.includes(" + ")
+                          ? selectedSubmission.primaryRole.split(" + ")[0]
+                          : selectedSubmission.primaryRole);
+                        const isSecondary = ranked.roleId === selectedSubmission.secondaryRole;
+
+                        return (
+                          <div key={ranked.roleId} className="flex items-center gap-4">
+                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 w-8">
+                              #{ranked.rank}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white w-32">
+                              {role.label}
+                            </span>
+                            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+                              <div
+                                className={`h-4 rounded-full ${
+                                  isPrimary
+                                    ? "bg-blue-600"
+                                    : isSecondary
+                                    ? "bg-indigo-500"
+                                    : "bg-gray-400"
+                                }`}
+                                style={{ width: `${percentage}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-bold text-gray-900 dark:text-white w-16 text-right">
+                              {ranked.score} pts
+                            </span>
+                            {(isPrimary || isSecondary) && (
+                              <span className="text-xs px-2 py-1 rounded font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                {isPrimary ? "Primary" : "Secondary"}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Top Skills */}
+                {selectedSubmission.skillProfile && getTopSkillTags(selectedSubmission).length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Top Skills
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {getTopSkillTags(selectedSubmission).map((tag, idx) => {
+                        const frequency = selectedSubmission.skillProfile!.tagFrequency[tag] || 1;
+                        return (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          >
+                            {tag}
+                            {frequency > 1 && (
+                              <span className="ml-1.5 text-xs opacity-75">({frequency})</span>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Evidence Highlights */}
+                {selectedSubmission.evidenceHighlights && selectedSubmission.evidenceHighlights.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Evidence from Choices
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedSubmission.evidenceHighlights.slice(0, 5).map((highlight, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
+                        >
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {highlight.evidence}
+                          </p>
+                          {highlight.signals && highlight.signals.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {highlight.signals.map((signal, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
+                                >
+                                  {signal}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {(selectedSubmission.primaryRecommendations || selectedSubmission.secondaryRecommendations) && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Recommendations
+                    </h3>
+                    <div className="space-y-4">
+                      {selectedSubmission.primaryRecommendations && selectedSubmission.primaryRecommendations.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Primary Role:
+                          </h4>
+                          <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                            {selectedSubmission.primaryRecommendations.map((rec, idx) => (
+                              <li key={idx}>{rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {selectedSubmission.secondaryRecommendations && selectedSubmission.secondaryRecommendations.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Secondary Role:
+                          </h4>
+                          <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                            {selectedSubmission.secondaryRecommendations.map((rec, idx) => (
+                              <li key={idx}>{rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary Text */}
+                {selectedSubmission.summaryText && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Summary
+                    </h3>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {selectedSubmission.summaryText}
+                    </p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <Link
+                    href={`/result/${selectedSubmission.id}`}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    View Full Result Page
+                  </Link>
+                  <button
+                    onClick={() => setSelectedSubmission(null)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </div>

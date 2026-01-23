@@ -35,6 +35,14 @@ export interface Role {
 export type OptionScoring = Record<RoleId, number>;
 
 /**
+ * Option metadata with skill signals and evidence
+ */
+export interface OptionMetadata {
+  signals: string[]; // Array of short skill tags (e.g. "Root-cause thinking", "User empathy")
+  evidence: string; // One sentence explaining what this choice implies (user-friendly, not judgmental)
+}
+
+/**
  * Quiz question structure
  */
 export interface Question {
@@ -43,6 +51,7 @@ export interface Question {
   prompt: string;
   options: string[];
   scoring: OptionScoring[]; // Array index corresponds to options array index
+  optionMetadata: OptionMetadata[]; // Array index corresponds to options array index
 }
 
 /**
@@ -74,6 +83,26 @@ export interface RankedRole {
 }
 
 /**
+ * Skill profile containing accumulated skill tags
+ */
+export interface SkillProfile {
+  tags: string[]; // Array of unique skill tags from selected options
+  tagFrequency: Record<string, number>; // Frequency count of each tag
+}
+
+/**
+ * Evidence highlight from a strong-signal answer
+ */
+export interface EvidenceHighlight {
+  questionId: number;
+  questionPrompt: string;
+  optionText: string;
+  evidence: string;
+  signals: string[];
+  score: number; // The score value that made this a strong signal (+2 or +3)
+}
+
+/**
  * Scoring result containing all calculated data
  */
 export interface ScoringResult {
@@ -83,6 +112,8 @@ export interface ScoringResult {
   secondaryRole?: RoleId; // Secondary role when applicable
   tieDetected: boolean;
   narrative: string;
+  skillProfile: SkillProfile; // Accumulated skill tags from all selected options
+  evidenceHighlights: EvidenceHighlight[]; // Top 3-5 strongest signal answers with evidence
 }
 
 // ============================================================================
@@ -153,6 +184,24 @@ export const QUESTIONS: Question[] = [
       { BE: 1, FE: 1, QA: 5, PM: 2 }, // Testing strategy
       { BE: 1, FE: 2, QA: 1, PM: 5 }, // Feature requirements
     ],
+    optionMetadata: [
+      {
+        signals: ["User empathy", "Visual thinking", "Design sensibility"],
+        evidence: "You prioritize how users will experience and interact with the product, focusing on intuitive design and visual appeal.",
+      },
+      {
+        signals: ["System architecture", "Root-cause thinking", "Scalability planning"],
+        evidence: "You think first about how data flows and systems connect, ensuring the foundation can support growth and complexity.",
+      },
+      {
+        signals: ["Risk spotting", "Quality mindset", "Preventive thinking"],
+        evidence: "You want to catch issues early by planning comprehensive testing, showing a proactive approach to quality.",
+      },
+      {
+        signals: ["Prioritization under pressure", "Business alignment", "Stakeholder awareness"],
+        evidence: "You focus on what delivers value to users and the business, balancing needs and constraints effectively.",
+      },
+    ],
   },
   {
     id: 2,
@@ -175,6 +224,32 @@ export const QUESTIONS: Question[] = [
       { BE: 4, FE: 1, QA: 1, PM: 1 }, // RESTful APIs
       { BE: 0, FE: 4, QA: 2, PM: 1 }, // Accessibility
     ],
+    optionMetadata: [
+      {
+        signals: ["Data modeling", "Performance optimization", "System architecture"],
+        evidence: "You enjoy structuring information efficiently and making systems perform at scale.",
+      },
+      {
+        signals: ["Visual design", "User experience", "Creative problem-solving"],
+        evidence: "You find satisfaction in creating interfaces that are both beautiful and functional across devices.",
+      },
+      {
+        signals: ["Quality assurance", "Systematic thinking", "Risk mitigation"],
+        evidence: "You take satisfaction in building comprehensive safety nets that prevent problems before they occur.",
+      },
+      {
+        signals: ["User empathy", "Strategic planning", "Stakeholder communication"],
+        evidence: "You value understanding user needs and translating them into actionable product plans.",
+      },
+      {
+        signals: ["API design", "System integration", "Technical architecture"],
+        evidence: "You enjoy building the connective tissue that allows different systems to communicate effectively.",
+      },
+      {
+        signals: ["Inclusive design", "User empathy", "Attention to detail"],
+        evidence: "You care deeply about ensuring products work for everyone, regardless of ability or device.",
+      },
+    ],
   },
   {
     id: 3,
@@ -195,6 +270,28 @@ export const QUESTIONS: Question[] = [
       { BE: 1, FE: 1, QA: 2, PM: 1 }, // Very important
       { BE: 2, FE: 2, QA: 4, PM: 2 }, // Extremely important
     ],
+    optionMetadata: [
+      {
+        signals: ["Speed over process", "Risk tolerance"],
+        evidence: "You prioritize moving fast and are comfortable with less formal testing processes.",
+      },
+      {
+        signals: ["Balanced approach", "Pragmatic thinking"],
+        evidence: "You see value in testing but balance it against other priorities and constraints.",
+      },
+      {
+        signals: ["Moderate risk awareness", "Balanced quality focus"],
+        evidence: "You recognize testing as important but don't let it dominate your workflow.",
+      },
+      {
+        signals: ["Quality mindset", "Risk awareness", "Preventive thinking"],
+        evidence: "You believe thorough testing prevents problems and builds confidence in deployments.",
+      },
+      {
+        signals: ["Quality-first mindset", "Risk mitigation", "Systematic validation"],
+        evidence: "You see comprehensive testing as essential to building reliable, trustworthy systems.",
+      },
+    ],
   },
   {
     id: 4,
@@ -212,6 +309,24 @@ export const QUESTIONS: Question[] = [
       { BE: 0, FE: 5, QA: 1, PM: 1 }, // CSS animations
       { BE: 1, FE: 1, QA: 5, PM: 1 }, // Test automation
       { BE: 1, FE: 1, QA: 1, PM: 5 }, // Stakeholder communication
+    ],
+    optionMetadata: [
+      {
+        signals: ["System architecture", "Scalability thinking", "Technical depth"],
+        evidence: "You want to master how complex systems work together and handle growth at scale.",
+      },
+      {
+        signals: ["Visual design", "User experience", "Creative expression"],
+        evidence: "You're drawn to the craft of creating engaging, responsive interfaces that delight users.",
+      },
+      {
+        signals: ["Quality assurance", "Automation mindset", "Systematic problem-solving"],
+        evidence: "You see value in building robust testing systems that catch issues automatically.",
+      },
+      {
+        signals: ["Stakeholder management", "Prioritization", "Business alignment"],
+        evidence: "You believe the key to success is understanding needs and aligning teams toward common goals.",
+      },
     ],
   },
   {
@@ -233,6 +348,28 @@ export const QUESTIONS: Question[] = [
       { BE: -1, FE: 1, QA: 1, PM: 2 }, // High
       { BE: -2, FE: 2, QA: 2, PM: 4 }, // Very high
     ],
+    optionMetadata: [
+      {
+        signals: ["Technical focus", "System-oriented thinking"],
+        evidence: "You prefer working with systems and code rather than direct user interaction.",
+      },
+      {
+        signals: ["Moderate user awareness", "Technical preference"],
+        evidence: "You understand users matter but prefer to focus on technical implementation.",
+      },
+      {
+        signals: ["Balanced perspective", "Flexible approach"],
+        evidence: "You're open to user interaction when needed but don't seek it out actively.",
+      },
+      {
+        signals: ["User empathy", "User-centered thinking"],
+        evidence: "You value understanding user needs directly and find it informs better solutions.",
+      },
+      {
+        signals: ["Strong user empathy", "User advocacy", "Customer focus"],
+        evidence: "You believe the best products come from deep understanding of user needs and experiences.",
+      },
+    ],
   },
   {
     id: 6,
@@ -250,6 +387,24 @@ export const QUESTIONS: Question[] = [
       { BE: 1, FE: 4, QA: 1, PM: 2 }, // Visual solutions
       { BE: 2, FE: 1, QA: 4, PM: 2 }, // Preventing issues
       { BE: 2, FE: 2, QA: 2, PM: 4 }, // Balancing constraints
+    ],
+    optionMetadata: [
+      {
+        signals: ["Decomposition", "System thinking", "Analytical approach"],
+        evidence: "You tackle complexity by breaking it into manageable pieces and understanding how they connect.",
+      },
+      {
+        signals: ["Visual thinking", "User experience", "Creative problem-solving"],
+        evidence: "You solve problems by making them visible, intuitive, and appealing to users.",
+      },
+      {
+        signals: ["Risk spotting", "Preventive thinking", "Systematic analysis"],
+        evidence: "You approach problems by identifying potential issues before they become real problems.",
+      },
+      {
+        signals: ["Prioritization", "Stakeholder management", "Balanced decision-making"],
+        evidence: "You excel at weighing competing needs and finding solutions that satisfy multiple constraints.",
+      },
     ],
   },
   {
@@ -273,6 +428,32 @@ export const QUESTIONS: Question[] = [
       { BE: 4, FE: 0, QA: 1, PM: 1 }, // Databases/queues
       { BE: 0, FE: 4, QA: 1, PM: 2 }, // Figma/design
     ],
+    optionMetadata: [
+      {
+        signals: ["Infrastructure", "DevOps", "System scalability"],
+        evidence: "You're interested in how applications run at scale and how infrastructure supports them.",
+      },
+      {
+        signals: ["Frontend development", "User interface", "Modern web technologies"],
+        evidence: "You enjoy building interactive user interfaces with modern frameworks and tools.",
+      },
+      {
+        signals: ["Test automation", "Quality assurance", "Systematic validation"],
+        evidence: "You value tools that help ensure software quality through automated testing.",
+      },
+      {
+        signals: ["Product management", "Collaboration", "Data-driven decisions"],
+        evidence: "You're drawn to tools that help teams collaborate and make decisions based on data.",
+      },
+      {
+        signals: ["Data persistence", "System architecture", "Performance optimization"],
+        evidence: "You're interested in how data is stored, retrieved, and processed efficiently.",
+      },
+      {
+        signals: ["Design systems", "Visual design", "UI consistency"],
+        evidence: "You care about creating cohesive, reusable design patterns that improve user experience.",
+      },
+    ],
   },
   {
     id: 8,
@@ -293,6 +474,28 @@ export const QUESTIONS: Question[] = [
       { BE: 3, FE: 2, QA: 2, PM: 1 }, // Comfortable
       { BE: 4, FE: 3, QA: 3, PM: 1 }, // Very comfortable
     ],
+    optionMetadata: [
+      {
+        signals: ["Preference for stability", "Planned work"],
+        evidence: "You prefer working in controlled environments where issues can be addressed methodically.",
+      },
+      {
+        signals: ["Moderate pressure tolerance", "Preference for planning"],
+        evidence: "You can handle some pressure but prefer having time to think through problems carefully.",
+      },
+      {
+        signals: ["Adaptable", "Balanced approach"],
+        evidence: "You can work under pressure when needed but don't actively seek high-stress situations.",
+      },
+      {
+        signals: ["Problem-solving under pressure", "Crisis management", "Technical troubleshooting"],
+        evidence: "You stay calm and focused when production issues arise, using systematic debugging approaches.",
+      },
+      {
+        signals: ["Thrives under pressure", "Rapid problem-solving", "Production expertise"],
+        evidence: "You excel at diagnosing and fixing issues quickly, even when the stakes are high and time is limited.",
+      },
+    ],
   },
   {
     id: 9,
@@ -310,6 +513,24 @@ export const QUESTIONS: Question[] = [
       { BE: 0, FE: 5, QA: 1, PM: 2 }, // Beautiful interfaces
       { BE: 1, FE: 1, QA: 5, PM: 1 }, // Quality assurance
       { BE: 1, FE: 2, QA: 1, PM: 5 }, // Business value
+    ],
+    optionMetadata: [
+      {
+        signals: ["System architecture", "Scalability", "Technical excellence"],
+        evidence: "You're driven by creating systems that are reliable, performant, and can grow with demand.",
+      },
+      {
+        signals: ["Visual design", "User experience", "Creative expression"],
+        evidence: "You find motivation in crafting interfaces that are both aesthetically pleasing and highly functional.",
+      },
+      {
+        signals: ["Quality mindset", "Risk prevention", "Attention to detail"],
+        evidence: "You're motivated by ensuring products work correctly and preventing problems before they impact users.",
+      },
+      {
+        signals: ["Business impact", "Value delivery", "Stakeholder success"],
+        evidence: "You're driven by seeing your work make a real difference to users and the business.",
+      },
     ],
   },
   {
@@ -332,6 +553,32 @@ export const QUESTIONS: Question[] = [
       { BE: 0, FE: 1, QA: 1, PM: 4 }, // User interviews
       { BE: 4, FE: 1, QA: 1, PM: 2 }, // API contracts
       { BE: 0, FE: 4, QA: 2, PM: 1 }, // Cross-browser
+    ],
+    optionMetadata: [
+      {
+        signals: ["Performance optimization", "Root-cause thinking", "Technical depth"],
+        evidence: "You enjoy the challenge of making systems faster and more efficient through careful analysis and optimization.",
+      },
+      {
+        signals: ["Rapid prototyping", "Creative exploration", "User experience"],
+        evidence: "You love experimenting with new interface ideas and seeing how users interact with them.",
+      },
+      {
+        signals: ["Systematic testing", "Quality assurance", "Preventive thinking"],
+        evidence: "You find satisfaction in building comprehensive test coverage that catches edge cases and regressions.",
+      },
+      {
+        signals: ["User research", "Data analysis", "User empathy"],
+        evidence: "You enjoy learning directly from users and using data to inform product decisions.",
+      },
+      {
+        signals: ["API design", "System architecture", "Technical planning"],
+        evidence: "You enjoy designing clean interfaces between systems that are maintainable and extensible.",
+      },
+      {
+        signals: ["Attention to detail", "Cross-platform thinking", "User experience"],
+        evidence: "You take pride in ensuring products work consistently across different browsers and devices.",
+      },
     ],
   },
 ];
@@ -376,6 +623,13 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     optionText: string;
   }> = [];
 
+  // Accumulate skill tags from all selected options
+  const skillTagFrequency: Record<string, number> = {};
+  const allSkillTags = new Set<string>();
+
+  // Track evidence highlights from strong-signal answers (+2 or +3)
+  const evidenceHighlights: EvidenceHighlight[] = [];
+
   // Process each question response
   for (const question of QUESTIONS) {
     const response = responses[question.id];
@@ -396,9 +650,11 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
       const optionIndex = response as number;
       if (
         optionIndex >= 0 &&
-        optionIndex < question.scoring.length
+        optionIndex < question.scoring.length &&
+        optionIndex < question.optionMetadata.length
       ) {
         const scoring = question.scoring[optionIndex];
+        const metadata = question.optionMetadata[optionIndex];
         selectedOptionText = question.options[optionIndex];
         
         // Add scores to totals
@@ -407,11 +663,11 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
         totals.QA += scoring.QA;
         totals.PM += scoring.PM;
 
-        // Count strong signals (+2 or +3)
-        if (scoring.BE >= 2) strongSignalCounts.BE++;
-        if (scoring.FE >= 2) strongSignalCounts.FE++;
-        if (scoring.QA >= 2) strongSignalCounts.QA++;
-        if (scoring.PM >= 2) strongSignalCounts.PM++;
+        // Accumulate skill tags
+        for (const signal of metadata.signals) {
+          allSkillTags.add(signal);
+          skillTagFrequency[signal] = (skillTagFrequency[signal] || 0) + 1;
+        }
 
         // Track highest scoring role for this question
         const roleScores = [scoring.BE, scoring.FE, scoring.QA, scoring.PM];
@@ -421,6 +677,25 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
           const roleIds: RoleId[] = ["BE", "FE", "QA", "PM"];
           maxQuestionRole = roleIds[roleIndex];
           maxQuestionScore = maxScore;
+        }
+
+        // Count strong signals (+2 or +3) and collect evidence
+        const isStrongSignal = maxScore >= 2;
+        if (isStrongSignal) {
+          if (scoring.BE >= 2) strongSignalCounts.BE++;
+          if (scoring.FE >= 2) strongSignalCounts.FE++;
+          if (scoring.QA >= 2) strongSignalCounts.QA++;
+          if (scoring.PM >= 2) strongSignalCounts.PM++;
+
+          // Add to evidence highlights
+          evidenceHighlights.push({
+            questionId: question.id,
+            questionPrompt: question.prompt,
+            optionText: selectedOptionText,
+            evidence: metadata.evidence,
+            signals: metadata.signals,
+            score: maxScore,
+          });
         }
       }
     } else if (question.type === "multiple_choice") {
@@ -434,9 +709,11 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
         for (const optionIndex of selectedIndices) {
           if (
             optionIndex >= 0 &&
-            optionIndex < question.scoring.length
+            optionIndex < question.scoring.length &&
+            optionIndex < question.optionMetadata.length
           ) {
             const scoring = question.scoring[optionIndex];
+            const metadata = question.optionMetadata[optionIndex];
             selectedOptions.push(question.options[optionIndex]);
             
             // Add scores to totals
@@ -445,11 +722,11 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
             totals.QA += scoring.QA;
             totals.PM += scoring.PM;
 
-            // Count strong signals (+2 or +3)
-            if (scoring.BE >= 2) strongSignalCounts.BE++;
-            if (scoring.FE >= 2) strongSignalCounts.FE++;
-            if (scoring.QA >= 2) strongSignalCounts.QA++;
-            if (scoring.PM >= 2) strongSignalCounts.PM++;
+            // Accumulate skill tags
+            for (const signal of metadata.signals) {
+              allSkillTags.add(signal);
+              skillTagFrequency[signal] = (skillTagFrequency[signal] || 0) + 1;
+            }
 
             // Track highest scoring role for this option
             const roleScores = [scoring.BE, scoring.FE, scoring.QA, scoring.PM];
@@ -459,6 +736,25 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
               const roleIds: RoleId[] = ["BE", "FE", "QA", "PM"];
               questionMaxRole = roleIds[roleIndex];
               questionMaxScore = maxScore;
+            }
+
+            // Count strong signals (+2 or +3) and collect evidence
+            const isStrongSignal = maxScore >= 2;
+            if (isStrongSignal) {
+              if (scoring.BE >= 2) strongSignalCounts.BE++;
+              if (scoring.FE >= 2) strongSignalCounts.FE++;
+              if (scoring.QA >= 2) strongSignalCounts.QA++;
+              if (scoring.PM >= 2) strongSignalCounts.PM++;
+
+              // Add to evidence highlights
+              evidenceHighlights.push({
+                questionId: question.id,
+                questionPrompt: question.prompt,
+                optionText: question.options[optionIndex],
+                evidence: metadata.evidence,
+                signals: metadata.signals,
+                score: maxScore,
+              });
             }
           }
         }
@@ -569,6 +865,17 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     responses
   );
 
+  // Sort evidence highlights by score (descending) and take top 3-5
+  const sortedEvidence = evidenceHighlights
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  // Build skill profile
+  const skillProfile: SkillProfile = {
+    tags: Array.from(allSkillTags).sort(),
+    tagFrequency: skillTagFrequency,
+  };
+
   return {
     totals,
     ranked,
@@ -576,6 +883,8 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     secondaryRole,
     tieDetected,
     narrative,
+    skillProfile,
+    evidenceHighlights: sortedEvidence,
   };
 }
 

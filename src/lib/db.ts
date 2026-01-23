@@ -22,50 +22,81 @@ let isConnecting = false;
 
 /**
  * Get or create Redis client
+ * 
+ * In serverless environments (Vercel), connections may not persist between invocations.
+ * This function ensures we have a working connection, reconnecting if necessary.
  */
 async function getRedisClient() {
-  if (redisClient && redisClient.isOpen) {
-    return redisClient;
-  }
-
   const redisUrl = process.env.REDIS_URL;
   
   if (!redisUrl) {
     throw new Error("REDIS_URL environment variable is not set");
   }
 
+  // Check if we have a ready client
+  if (redisClient) {
+    // Check if client is ready (connected and authenticated)
+    if (redisClient.isReady) {
+      return redisClient;
+    }
+    
+    // If client exists but not ready, try to reconnect
+    if (redisClient.isOpen) {
+      try {
+        // Client is open but not ready, try to ensure it's ready
+        if (!redisClient.isReady) {
+          await redisClient.connect();
+        }
+        return redisClient;
+      } catch (err) {
+        console.warn("Failed to reconnect existing client, creating new one:", err);
+        // If reconnect fails, create a new client
+        redisClient = null;
+      }
+    }
+  }
+
   // If already connecting, wait a bit and try again
   if (isConnecting) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    if (redisClient && redisClient.isOpen) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    if (redisClient && redisClient.isReady) {
       return redisClient;
     }
   }
 
-  // Create Redis client with connection string
-  redisClient = createClient({
-    url: redisUrl,
-  });
-
-  // Handle connection errors
-  redisClient.on("error", (err) => {
-    console.error("Redis Client Error:", err);
-  });
-
-  // Connect to Redis
+  // Create new Redis client with connection string
   isConnecting = true;
   try {
-    if (!redisClient.isOpen) {
-      await redisClient.connect();
-    }
+    redisClient = createClient({
+      url: redisUrl,
+      socket: {
+        reconnectStrategy: (retries) => {
+          // Reconnect strategy: retry up to 3 times with exponential backoff
+          if (retries > 3) {
+            console.error("Redis reconnection failed after 3 retries");
+            return new Error("Redis connection failed");
+          }
+          return Math.min(retries * 50, 1000);
+        },
+      },
+    });
+
+    // Handle connection errors
+    redisClient.on("error", (err) => {
+      console.error("Redis Client Error:", err);
+    });
+
+    // Connect to Redis
+    await redisClient.connect();
+    
+    return redisClient;
   } catch (err) {
     console.error("Failed to connect to Redis:", err);
+    redisClient = null; // Reset client on error
     throw err;
   } finally {
     isConnecting = false;
   }
-
-  return redisClient;
 }
 
 /**

@@ -38,6 +38,32 @@ export interface Submission {
   // Narrative summary text
   summaryText: string;
   
+  // Skill profile: accumulated skill tags from all selected options
+  // Optional for backward compatibility with old submissions
+  skillProfile?: {
+    tags: string[];
+    tagFrequency: Record<string, number>;
+  };
+  
+  // Evidence highlights: top 3-5 strongest signal answers with evidence
+  // Optional for backward compatibility with old submissions
+  evidenceHighlights?: Array<{
+    questionId: number;
+    questionPrompt: string;
+    optionText: string;
+    evidence: string;
+    signals: string[];
+    score: number;
+  }>;
+  
+  // Primary role recommendations (from role playbook bestUsedFor)
+  // Optional for backward compatibility with old submissions
+  primaryRecommendations?: string[];
+  
+  // Secondary role recommendations (from secondary role playbook bestUsedFor, if applicable)
+  // Optional for backward compatibility with old submissions
+  secondaryRecommendations?: string[];
+  
   // Optional metadata
   userAgent: string | null;
   ipHash: string | null; // SHA-256 hash of IP address

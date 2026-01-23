@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
         totals: submission.totals,
         rankedRoles: submission.rankedRoles,
         scoreSpread,
+        // Include new fields for admin view
+        skillProfile: submission.skillProfile,
+        evidenceHighlights: submission.evidenceHighlights,
+        primaryRecommendations: submission.primaryRecommendations,
+        secondaryRecommendations: submission.secondaryRecommendations,
+        summaryText: submission.summaryText,
       };
     });
 

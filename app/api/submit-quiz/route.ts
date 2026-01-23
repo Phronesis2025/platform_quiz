@@ -4,6 +4,7 @@ import { createSubmission, getSubmission } from "@/src/lib/db";
 import { hashIP, getIPAddress } from "@/src/lib/utils";
 import { submissionRequestSchema } from "@/src/lib/validation";
 import { getRateLimiter } from "@/src/lib/rate-limit";
+import { getRolePlaybookByString, getRolePlaybook } from "@/src/lib/rolePlaybooks";
 
 // Force dynamic rendering - this route should never be statically generated
 export const dynamic = "force-dynamic";
@@ -109,6 +110,16 @@ export async function POST(request: NextRequest) {
     // Never trust any scores from the client - always recalculate
     const scoringResult = scoreResponses(quizResponses);
 
+    // Get role playbooks for recommendations
+    const primaryPlaybook = getRolePlaybookByString(scoringResult.primaryRole);
+    const secondaryPlaybook = scoringResult.secondaryRole
+      ? getRolePlaybook(scoringResult.secondaryRole)
+      : null;
+
+    // Build recommendations from playbooks
+    const primaryRecommendations = primaryPlaybook?.bestUsedFor || [];
+    const secondaryRecommendations = secondaryPlaybook?.bestUsedFor || [];
+
     // Create submission in Redis
     // Store both raw answers AND computed results
     const submission = await createSubmission({
@@ -128,6 +139,13 @@ export async function POST(request: NextRequest) {
       secondaryRole: scoringResult.secondaryRole || null,
       // Store computed narrative (generated server-side)
       summaryText: scoringResult.narrative,
+      // Store skill profile (accumulated tags from all options)
+      skillProfile: scoringResult.skillProfile,
+      // Store evidence highlights (top strong-signal answers)
+      evidenceHighlights: scoringResult.evidenceHighlights,
+      // Store recommendations from role playbooks
+      primaryRecommendations,
+      secondaryRecommendations,
       userAgent,
       ipHash,
     });
@@ -151,6 +169,10 @@ export async function POST(request: NextRequest) {
             secondaryRole: submission.secondaryRole,
             tieDetected: scoringResult.tieDetected,
             narrative: submission.summaryText,
+            skillProfile: submission.skillProfile,
+            evidenceHighlights: submission.evidenceHighlights,
+            primaryRecommendations: submission.primaryRecommendations,
+            secondaryRecommendations: submission.secondaryRecommendations,
           },
           timestamp: submission.createdAt,
         },
@@ -250,6 +272,10 @@ export async function GET(request: NextRequest) {
           primaryRole: submission.primaryRole, // Server-computed
           secondaryRole: submission.secondaryRole, // Server-computed
           narrative: submission.summaryText, // Server-computed
+          skillProfile: submission.skillProfile, // Server-computed
+          evidenceHighlights: submission.evidenceHighlights, // Server-computed
+          primaryRecommendations: submission.primaryRecommendations, // Server-computed
+          secondaryRecommendations: submission.secondaryRecommendations, // Server-computed
         },
         timestamp: submission.createdAt,
       },

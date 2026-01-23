@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ROLES, type RoleId } from "@/src/lib/quiz";
+import { getRolePlaybookByString, getRolePlaybook } from "@/src/lib/rolePlaybooks";
 
 // Type definition for quiz submission
 interface QuizSubmission {
@@ -18,6 +19,20 @@ interface QuizSubmission {
     secondaryRole?: RoleId;
     tieDetected: boolean;
     narrative: string;
+    skillProfile?: {
+      tags: string[];
+      tagFrequency: Record<string, number>;
+    };
+    evidenceHighlights?: Array<{
+      questionId: number;
+      questionPrompt: string;
+      optionText: string;
+      evidence: string;
+      signals: string[];
+      score: number;
+    }>;
+    primaryRecommendations?: string[];
+    secondaryRecommendations?: string[];
   };
   timestamp: string;
 }
@@ -74,6 +89,10 @@ export default function ResultPage() {
             secondaryRole: data.scoring.secondaryRole,
             tieDetected: data.scoring.tieDetected || false,
             narrative: data.scoring.narrative,
+            skillProfile: data.scoring.skillProfile,
+            evidenceHighlights: data.scoring.evidenceHighlights,
+            primaryRecommendations: data.scoring.primaryRecommendations,
+            secondaryRecommendations: data.scoring.secondaryRecommendations,
           },
           timestamp: data.timestamp,
         };
@@ -163,15 +182,77 @@ export default function ResultPage() {
   const roleInfo = getRoleInfo();
   const maxScore = Math.max(...Object.values(result.scoring.totals));
 
-  // Get all roles in fixed order (BE, FE, QA, PM)
-  const allRoles: RoleId[] = ["BE", "FE", "QA", "PM"];
-  const roleScores = allRoles.map((roleId) => ({
-    roleId,
-    role: ROLES[roleId],
-    score: result.scoring.totals[roleId],
-    isPrimary: roleInfo.primary.id === roleId || (roleInfo.isTie && roleInfo.secondary?.id === roleId),
-    isSecondary: roleInfo.secondary?.id === roleId && !roleInfo.isTie,
-  }));
+  // Get ranked roles (1-4) with labels
+  const rankedRoles = result.scoring.ranked.map((ranked) => {
+    const roleId = ranked.roleId;
+    let label = "";
+    if (roleInfo.isTie) {
+      const [role1, role2] = (result.scoring.primaryRole as string).split(" + ") as [RoleId, RoleId];
+      if (roleId === role1 || roleId === role2) {
+        label = "Primary";
+      } else if (ranked.rank === 3) {
+        label = "Additional fit";
+      } else {
+        label = "Additional fit";
+      }
+    } else {
+      if (roleId === roleInfo.primary.id) {
+        label = "Primary";
+      } else if (roleId === roleInfo.secondary?.id) {
+        label = "Secondary";
+      } else {
+        label = "Additional fit";
+      }
+    }
+    return {
+      ...ranked,
+      role: ROLES[roleId],
+      label,
+    };
+  });
+
+  // Get top 6 skill tags (sorted by frequency, then alphabetically)
+  // Fallback to empty array if skillProfile is missing (for old submissions)
+  const topSkillTags = result.scoring.skillProfile
+    ? [...result.scoring.skillProfile.tags]
+        .sort((a, b) => {
+          const freqA = result.scoring.skillProfile!.tagFrequency[a] || 0;
+          const freqB = result.scoring.skillProfile!.tagFrequency[b] || 0;
+          if (freqB !== freqA) {
+            return freqB - freqA; // Higher frequency first
+          }
+          return a.localeCompare(b); // Alphabetical tie-breaker
+        })
+        .slice(0, 6)
+    : [];
+
+  // Get evidence highlights (3-5 items)
+  // Fallback to empty array if missing (for old submissions)
+  const evidenceHighlights = result.scoring.evidenceHighlights || [];
+
+  // Get role playbooks
+  const primaryPlaybook = getRolePlaybookByString(result.scoring.primaryRole);
+  const secondaryPlaybook = result.scoring.secondaryRole
+    ? getRolePlaybook(result.scoring.secondaryRole)
+    : null;
+
+  // Build "How to use you" section: use stored recommendations if available, otherwise compute from playbooks
+  const howToUseYou: string[] = [];
+  if (result.scoring.primaryRecommendations && result.scoring.primaryRecommendations.length > 0) {
+    // Use stored recommendations (new format)
+    howToUseYou.push(...result.scoring.primaryRecommendations);
+    if (result.scoring.secondaryRecommendations && result.scoring.secondaryRecommendations.length >= 2) {
+      howToUseYou.push(...result.scoring.secondaryRecommendations.slice(0, 2));
+    }
+  } else {
+    // Fallback: compute from playbooks (for old submissions)
+    if (primaryPlaybook) {
+      howToUseYou.push(...primaryPlaybook.bestUsedFor);
+    }
+    if (secondaryPlaybook && secondaryPlaybook.bestUsedFor.length >= 2) {
+      howToUseYou.push(...secondaryPlaybook.bestUsedFor.slice(0, 2));
+    }
+  }
 
   return (
     <>
@@ -216,7 +297,7 @@ export default function ResultPage() {
           {/* Header */}
           <div className="text-center mb-8 print:mb-6">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 print:text-3xl">
-              Role Fit Assessment
+              Your Role Fit Profile
             </h1>
             {result.name && (
               <p className="text-lg text-gray-600 print:text-base">
@@ -226,62 +307,46 @@ export default function ResultPage() {
             )}
           </div>
 
-          {/* Best Fit Section */}
-          <div className="mb-8 print:mb-6">
-            <div className="bg-blue-50 border-2 border-blue-600 rounded-lg p-6 print:p-4 text-center">
-              <p className="text-sm text-gray-600 mb-2 print:text-xs">Best Fit</p>
-              <p className="text-3xl md:text-4xl font-bold text-blue-600 print:text-3xl">
-                {roleInfo.primary.label}
-              </p>
-            </div>
-          </div>
-
-          {/* Strong Secondary Fit - if applicable */}
-          {roleInfo.secondary && !roleInfo.isTie && (
-            <div className="mb-8 print:mb-6">
-              <div className="bg-indigo-50 border-2 border-indigo-500 rounded-lg p-6 print:p-4 text-center">
-                <p className="text-sm text-gray-600 mb-2 print:text-xs">Strong Secondary Fit</p>
-                <p className="text-2xl md:text-3xl font-bold text-indigo-600 print:text-2xl">
-                  {roleInfo.secondary.label}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Score Breakdown - Bar Style */}
+          {/* Ranked Roles 1-4 */}
           <div className="mb-8 print:mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
-              Score Breakdown
+              Role Rankings
             </h2>
-            <div className="space-y-4 print:space-y-3">
-              {roleScores.map(({ roleId, role, score, isPrimary, isSecondary }) => {
-                const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+            <div className="space-y-3 print:space-y-2">
+              {rankedRoles.map((ranked) => {
+                const percentage = maxScore > 0 ? Math.round((ranked.score / maxScore) * 100) : 0;
+                const isPrimary = ranked.label === "Primary";
+                const isSecondary = ranked.label === "Secondary";
                 const barColor = isPrimary
                   ? "bg-blue-600"
                   : isSecondary
                   ? "bg-indigo-500"
-                  : "bg-gray-300";
+                  : "bg-gray-400";
 
                 return (
-                  <div key={roleId} className="print:break-inside-avoid">
+                  <div key={ranked.roleId} className="print:break-inside-avoid">
                     <div className="flex items-center justify-between mb-2 print:mb-1">
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-gray-900 text-base print:text-sm">
-                          {role.label}
+                        <span className="text-sm font-medium text-gray-500 print:text-xs">
+                          #{ranked.rank}
                         </span>
-                        {isPrimary && (
-                          <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded print:hidden">
-                            Best Fit
-                          </span>
-                        )}
-                        {isSecondary && (
-                          <span className="text-xs bg-indigo-500 text-white px-2 py-1 rounded print:hidden">
-                            Secondary
-                          </span>
-                        )}
+                        <span className="font-semibold text-gray-900 text-base print:text-sm">
+                          {ranked.role.label}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded font-medium print:text-xs ${
+                            isPrimary
+                              ? "bg-blue-600 text-white"
+                              : isSecondary
+                              ? "bg-indigo-500 text-white"
+                              : "bg-gray-200 text-gray-700"
+                          }`}
+                        >
+                          {ranked.label}
+                        </span>
                       </div>
                       <span className="text-lg font-bold text-gray-900 print:text-base">
-                        {score} pts
+                        {ranked.score} pts
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-4 print:h-3">
@@ -296,34 +361,68 @@ export default function ResultPage() {
             </div>
           </div>
 
-          {/* Narrative Summary */}
-          <div className="mb-8 print:mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
-              Summary
-            </h2>
-            <div className="bg-gray-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-gray-200">
-              <p className="text-gray-700 leading-relaxed print:text-sm">
-                {summary}
-              </p>
-            </div>
-          </div>
-
-          {/* Why Reasons - Bullet Points */}
-          {bullets.length > 0 && (
+          {/* Your Strongest Signals */}
+          {topSkillTags.length > 0 && (
             <div className="mb-8 print:mb-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
-                Why This Role Fits You
+                Your Strongest Signals
               </h2>
-              <div className="bg-gray-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-gray-200">
+              <div className="flex flex-wrap gap-2 print:gap-1.5">
+                {topSkillTags.map((tag, index) => {
+                  const frequency = result.scoring.skillProfile?.tagFrequency[tag] || 1;
+                  return (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 print:px-2 print:py-1 print:text-xs print:bg-blue-50 print:border print:border-blue-200"
+                    >
+                      {tag}
+                      {frequency > 1 && (
+                        <span className="ml-1.5 text-xs opacity-75 print:hidden">
+                          ({frequency})
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Evidence from Your Choices */}
+          {evidenceHighlights.length > 0 && (
+            <div className="mb-8 print:mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
+                Evidence from Your Choices
+              </h2>
+              <div className="space-y-4 print:space-y-3">
+                {evidenceHighlights.slice(0, 5).map((highlight, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-50 rounded-lg p-5 print:p-4 print:bg-white print:border print:border-gray-200 print:break-inside-avoid"
+                  >
+                    <p className="text-gray-700 leading-relaxed print:text-sm">
+                      {highlight.evidence}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* How to Use You on This Project */}
+          {howToUseYou.length > 0 && (
+            <div className="mb-8 print:mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
+                How to Use You on This Project
+              </h2>
+              <div className="bg-green-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-green-200">
                 <ul className="space-y-3 print:space-y-2">
-                  {bullets.map((bullet, index) => (
+                  {howToUseYou.map((item, index) => (
                     <li key={index} className="flex items-start gap-3 print:gap-2">
-                      <span className="text-blue-600 font-bold mt-1 print:mt-0.5 print:text-sm">
+                      <span className="text-green-600 font-bold mt-1 print:mt-0.5 print:text-sm">
                         •
                       </span>
-                      <span className="text-gray-700 flex-1 print:text-sm">
-                        {bullet}
-                      </span>
+                      <span className="text-gray-700 flex-1 print:text-sm">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -331,17 +430,69 @@ export default function ResultPage() {
             </div>
           )}
 
-          {/* Footer - hidden when printing */}
-          <div className="no-print mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
-            <p>
-              Completed: {new Date(result.timestamp).toLocaleString()}
-            </p>
-            <p className="mt-2">
-              Share this result:{" "}
-              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                {typeof window !== "undefined" ? window.location.href : ""}
-              </span>
-            </p>
+          {/* Watch-outs */}
+          {primaryPlaybook && primaryPlaybook.watchOutFor.length > 0 && (
+            <div className="mb-8 print:mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
+                Watch-outs
+              </h2>
+              <div className="bg-amber-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-amber-200">
+                <ul className="space-y-3 print:space-y-2">
+                  {primaryPlaybook.watchOutFor.map((item, index) => (
+                    <li key={index} className="flex items-start gap-3 print:gap-2">
+                      <span className="text-amber-600 font-bold mt-1 print:mt-0.5 print:text-sm">
+                        •
+                      </span>
+                      <span className="text-gray-700 flex-1 print:text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* How to Contribute If Not Primary Fit */}
+          {primaryPlaybook && primaryPlaybook.howToContributeIfNotPrimary && primaryPlaybook.howToContributeIfNotPrimary.length > 0 && (
+            <div className="mb-8 print:mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
+                How to Contribute If You&apos;re NOT the Primary Fit
+              </h2>
+              <div className="bg-blue-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-blue-200">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 print:text-xs italic">
+                  Even if this isn&apos;t your primary role fit, you still have valuable contributions to make. Here&apos;s how you can add value:
+                </p>
+                <ul className="space-y-3 print:space-y-2">
+                  {primaryPlaybook.howToContributeIfNotPrimary.map((item, index) => (
+                    <li key={index} className="flex items-start gap-3 print:gap-2">
+                      <span className="text-blue-600 font-bold mt-1 print:mt-0.5 print:text-sm">
+                        •
+                      </span>
+                      <span className="text-gray-700 flex-1 print:text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="mt-8 pt-6 border-t-2 border-gray-300 print:border-gray-400">
+            <div className="bg-gray-50 rounded-lg p-4 print:p-3 print:bg-white print:border print:border-gray-300">
+              <p className="text-sm text-gray-600 text-center print:text-xs">
+                <strong>Note:</strong> This is guidance for team composition and project planning, not a performance evaluation.
+              </p>
+            </div>
+            <div className="no-print mt-4 text-center text-sm text-gray-500">
+              <p>
+                Completed: {new Date(result.timestamp).toLocaleString()}
+              </p>
+              <p className="mt-2">
+                Share this result:{" "}
+                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                  {typeof window !== "undefined" ? window.location.href : ""}
+                </span>
+              </p>
+            </div>
           </div>
         </div>
       </div>
