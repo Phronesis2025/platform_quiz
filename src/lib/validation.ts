@@ -12,10 +12,10 @@ import { QUESTIONS } from "./quiz";
  */
 
 // Schema for a single question response
-// Can be a number (for forced_choice/likert) or array of numbers (for multiple_choice)
+// Can be a number (for forced_choice/likert) or array of numbers (for multiple_choice, max 2)
 const questionResponseSchema = z.union([
   z.number().int().nonnegative(),
-  z.array(z.number().int().nonnegative()).min(1),
+  z.array(z.number().int().nonnegative()).min(1).max(2),
 ]);
 
 // Schema for the complete quiz responses
@@ -55,6 +55,10 @@ const quizResponsesSchema = z.record(
         }
         // Must select at least one option
         if (response.length === 0) {
+          return false;
+        }
+        // Must select at most 2 options (Select up to 2)
+        if (response.length > 2) {
           return false;
         }
       } else {

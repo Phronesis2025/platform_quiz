@@ -356,14 +356,24 @@ export default function QuizPage() {
               <button
                 key={index}
                 onClick={() => {
-                  const newSelection = isSelected
-                    ? selectedIndices.filter((i) => i !== index)
-                    : [...selectedIndices, index];
-                  handleAnswerSelect(newSelection.length > 0 ? newSelection : []);
+                  if (isSelected) {
+                    // Deselect
+                    const newSelection = selectedIndices.filter((i) => i !== index);
+                    handleAnswerSelect(newSelection.length > 0 ? newSelection : []);
+                  } else {
+                    // Select (but limit to 2)
+                    if (selectedIndices.length < 2) {
+                      const newSelection = [...selectedIndices, index];
+                      handleAnswerSelect(newSelection);
+                    }
+                  }
                 }}
+                disabled={!isSelected && selectedIndices.length >= 2}
                 className={`w-full text-left p-5 rounded-lg border-2 transition-all duration-200 ${
                   isSelected
                     ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md"
+                    : !isSelected && selectedIndices.length >= 2
+                    ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50 opacity-50 cursor-not-allowed"
                     : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 }`}
               >
@@ -487,9 +497,17 @@ export default function QuizPage() {
 
         {/* Question card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 md:p-8 lg:p-10">
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white mb-6 md:mb-8 leading-tight">
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white mb-2 md:mb-3 leading-tight">
             {currentQuestion.prompt}
           </h2>
+          {currentQuestion.type === "multiple_choice" && (
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mb-6 md:mb-8 italic">
+              Select up to 2 options
+            </p>
+          )}
+          {currentQuestion.type !== "multiple_choice" && (
+            <div className="mb-6 md:mb-8"></div>
+          )}
 
           {/* Answer options */}
           <div className="mb-8 md:mb-10">

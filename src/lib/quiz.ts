@@ -171,35 +171,35 @@ export const QUESTIONS: Question[] = [
     id: 1,
     type: "forced_choice",
     prompt:
-      "When starting a new project, what is your primary concern?",
+      "When starting a project with unclear requirements and a tight timeline, what concerns you most?",
     options: [
-      "User experience and visual design",
-      "Data structure and system architecture",
-      "Testing strategy and quality assurance",
-      "Feature requirements and business value",
+      "Ensuring the underlying logic and data flow are correct",
+      "Making sure priorities, scope, and expectations are clear",
+      "Preventing errors or regressions later",
+      "Making sure the end result is intuitive and usable",
     ],
     scoring: [
-      { BE: 0, FE: 5, QA: 1, PM: 2 }, // User experience
-      { BE: 5, FE: 1, QA: 2, PM: 1 }, // Data structure
-      { BE: 1, FE: 1, QA: 5, PM: 2 }, // Testing strategy
-      { BE: 1, FE: 2, QA: 1, PM: 5 }, // Feature requirements
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // B → PM
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // D → FE
     ],
     optionMetadata: [
       {
-        signals: ["User empathy", "Visual thinking", "Design sensibility"],
-        evidence: "You prioritize how users will experience and interact with the product, focusing on intuitive design and visual appeal.",
+        signals: ["Root-cause thinking", "System architecture", "Data integrity"],
+        evidence: "You prioritize getting the foundational logic right, even when requirements are unclear.",
       },
       {
-        signals: ["System architecture", "Root-cause thinking", "Scalability planning"],
-        evidence: "You think first about how data flows and systems connect, ensuring the foundation can support growth and complexity.",
+        signals: ["Prioritization under pressure", "Scope management", "Stakeholder communication"],
+        evidence: "You focus on clarifying what matters most and setting clear expectations before diving in.",
       },
       {
-        signals: ["Risk spotting", "Quality mindset", "Preventive thinking"],
-        evidence: "You want to catch issues early by planning comprehensive testing, showing a proactive approach to quality.",
+        signals: ["Risk spotting", "Preventive thinking", "Quality mindset"],
+        evidence: "You're concerned about preventing problems that could cause issues down the line.",
       },
       {
-        signals: ["Prioritization under pressure", "Business alignment", "Stakeholder awareness"],
-        evidence: "You focus on what delivers value to users and the business, balancing needs and constraints effectively.",
+        signals: ["User empathy", "Usability focus", "User experience"],
+        evidence: "You want to ensure the end result makes sense to users and is easy to use.",
       },
     ],
   },
@@ -207,47 +207,35 @@ export const QUESTIONS: Question[] = [
     id: 2,
     type: "multiple_choice",
     prompt:
-      "Which of the following tasks do you find most engaging? (Select all that apply)",
+      "Which tasks do you find most engaging? (Select up to 2)",
     options: [
-      "Designing database schemas and optimizing queries",
-      "Creating responsive layouts and animations",
-      "Writing comprehensive test suites",
-      "Gathering user feedback and defining roadmaps",
-      "Building RESTful APIs and microservices",
-      "Implementing accessibility features",
+      "Tracing issues back to their root cause",
+      "Improving how information is presented to users",
+      "Verifying accuracy and catching edge cases",
+      "Coordinating work, priorities, and timelines",
     ],
     scoring: [
-      { BE: 4, FE: 0, QA: 1, PM: 1 }, // Database schemas
-      { BE: 0, FE: 4, QA: 0, PM: 1 }, // Responsive layouts
-      { BE: 1, FE: 1, QA: 4, PM: 1 }, // Test suites
-      { BE: 1, FE: 1, QA: 1, PM: 4 }, // User feedback
-      { BE: 4, FE: 1, QA: 1, PM: 1 }, // RESTful APIs
-      { BE: 0, FE: 4, QA: 2, PM: 1 }, // Accessibility
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Tracing issues → BE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Improving presentation → FE
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Verifying accuracy → QA
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Coordinating work → PM
     ],
     optionMetadata: [
       {
-        signals: ["Data modeling", "Performance optimization", "System architecture"],
-        evidence: "You enjoy structuring information efficiently and making systems perform at scale.",
+        signals: ["Root-cause thinking", "Systematic investigation", "Problem-solving"],
+        evidence: "You enjoy digging deep to understand why something isn't working as expected.",
       },
       {
-        signals: ["Visual design", "User experience", "Creative problem-solving"],
-        evidence: "You find satisfaction in creating interfaces that are both beautiful and functional across devices.",
+        signals: ["User empathy", "Presentation clarity", "Usability focus"],
+        evidence: "You find satisfaction in making information clearer and more accessible to users.",
       },
       {
-        signals: ["Quality assurance", "Systematic thinking", "Risk mitigation"],
-        evidence: "You take satisfaction in building comprehensive safety nets that prevent problems before they occur.",
+        signals: ["Quality assurance", "Attention to detail", "Risk mitigation"],
+        evidence: "You take pride in catching errors and edge cases that others might miss.",
       },
       {
-        signals: ["User empathy", "Strategic planning", "Stakeholder communication"],
-        evidence: "You value understanding user needs and translating them into actionable product plans.",
-      },
-      {
-        signals: ["API design", "System integration", "Technical architecture"],
-        evidence: "You enjoy building the connective tissue that allows different systems to communicate effectively.",
-      },
-      {
-        signals: ["Inclusive design", "User empathy", "Attention to detail"],
-        evidence: "You care deeply about ensuring products work for everyone, regardless of ability or device.",
+        signals: ["Coordination", "Prioritization", "Stakeholder management"],
+        evidence: "You enjoy bringing people together and ensuring work flows smoothly.",
       },
     ],
   },
@@ -255,41 +243,41 @@ export const QUESTIONS: Question[] = [
     id: 3,
     type: "likert",
     prompt:
-      "How important is it to you that code is thoroughly tested before deployment?",
+      "When a deadline is tight, I prefer to slow down briefly to reduce future rework.",
     options: [
-      "Not important",
-      "Somewhat important",
-      "Moderately important",
-      "Very important",
-      "Extremely important",
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
     ],
     scoring: [
-      { BE: 2, FE: 2, QA: -2, PM: 1 }, // Not important
-      { BE: 1, FE: 1, QA: -1, PM: 0 }, // Somewhat important
-      { BE: 0, FE: 0, QA: 0, PM: 0 }, // Moderately important
-      { BE: 1, FE: 1, QA: 2, PM: 1 }, // Very important
-      { BE: 2, FE: 2, QA: 4, PM: 2 }, // Extremely important
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SD → FE
+      { BE: 0, FE: 1, QA: 0, PM: 1 }, // D → FE / PM
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // N → BE
+      { BE: 0, FE: 0, QA: 1, PM: 1 }, // A → QA / PM
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // SA → QA
     ],
     optionMetadata: [
       {
-        signals: ["Speed over process", "Risk tolerance"],
-        evidence: "You prioritize moving fast and are comfortable with less formal testing processes.",
+        signals: ["Speed preference", "Action-oriented", "Rapid iteration"],
+        evidence: "You prefer to move quickly and iterate rather than slowing down for planning.",
       },
       {
-        signals: ["Balanced approach", "Pragmatic thinking"],
-        evidence: "You see value in testing but balance it against other priorities and constraints.",
+        signals: ["Pragmatic balance", "Flexible approach"],
+        evidence: "You balance speed with some consideration for future impact.",
       },
       {
-        signals: ["Moderate risk awareness", "Balanced quality focus"],
-        evidence: "You recognize testing as important but don't let it dominate your workflow.",
+        signals: ["Balanced perspective", "Context-dependent"],
+        evidence: "You adapt your approach based on the specific situation and context.",
       },
       {
-        signals: ["Quality mindset", "Risk awareness", "Preventive thinking"],
-        evidence: "You believe thorough testing prevents problems and builds confidence in deployments.",
+        signals: ["Preventive thinking", "Quality focus", "Long-term view"],
+        evidence: "You believe taking time upfront prevents problems and saves time later.",
       },
       {
-        signals: ["Quality-first mindset", "Risk mitigation", "Systematic validation"],
-        evidence: "You see comprehensive testing as essential to building reliable, trustworthy systems.",
+        signals: ["Quality-first mindset", "Risk mitigation", "Systematic approach"],
+        evidence: "You strongly believe that investing time in quality upfront prevents costly rework.",
       },
     ],
   },
@@ -297,35 +285,35 @@ export const QUESTIONS: Question[] = [
     id: 4,
     type: "forced_choice",
     prompt:
-      "If you had to choose one skill to master, which would it be?",
+      "If you could master one capability, which would it be?",
     options: [
-      "System design and scalability",
-      "CSS animations and responsive design",
-      "Test automation and bug tracking",
-      "Stakeholder communication and prioritization",
+      "Diagnosing complex logic or data issues",
+      "Translating complex work into clear, usable outputs",
+      "Designing checks that prevent errors before release",
+      "Managing priorities, risks, and communication",
     ],
     scoring: [
-      { BE: 5, FE: 1, QA: 2, PM: 2 }, // System design
-      { BE: 0, FE: 5, QA: 1, PM: 1 }, // CSS animations
-      { BE: 1, FE: 1, QA: 5, PM: 1 }, // Test automation
-      { BE: 1, FE: 1, QA: 1, PM: 5 }, // Stakeholder communication
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // B → FE
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // D → PM
     ],
     optionMetadata: [
       {
-        signals: ["System architecture", "Scalability thinking", "Technical depth"],
-        evidence: "You want to master how complex systems work together and handle growth at scale.",
+        signals: ["Technical depth", "Root-cause thinking", "Systematic analysis"],
+        evidence: "You want to excel at understanding and fixing complex technical problems.",
       },
       {
-        signals: ["Visual design", "User experience", "Creative expression"],
-        evidence: "You're drawn to the craft of creating engaging, responsive interfaces that delight users.",
+        signals: ["Communication", "User empathy", "Clarity"],
+        evidence: "You value the ability to make complex information accessible and understandable.",
       },
       {
-        signals: ["Quality assurance", "Automation mindset", "Systematic problem-solving"],
-        evidence: "You see value in building robust testing systems that catch issues automatically.",
+        signals: ["Quality assurance", "Preventive thinking", "Risk mitigation"],
+        evidence: "You want to master building systems that catch problems before they reach users.",
       },
       {
-        signals: ["Stakeholder management", "Prioritization", "Business alignment"],
-        evidence: "You believe the key to success is understanding needs and aligning teams toward common goals.",
+        signals: ["Stakeholder management", "Prioritization", "Coordination"],
+        evidence: "You believe success comes from effectively managing people, priorities, and risks.",
       },
     ],
   },
@@ -333,41 +321,41 @@ export const QUESTIONS: Question[] = [
     id: 5,
     type: "likert",
     prompt:
-      "Rate your interest in working directly with end users to understand their needs.",
+      "I enjoy working directly with users or stakeholders to understand how outputs are used.",
     options: [
-      "Very low interest",
-      "Low interest",
+      "Strongly Disagree",
+      "Disagree",
       "Neutral",
-      "High interest",
-      "Very high interest",
+      "Agree",
+      "Strongly Agree",
     ],
     scoring: [
-      { BE: 2, FE: 1, QA: 1, PM: -2 }, // Very low
-      { BE: 1, FE: 0, QA: 0, PM: -1 }, // Low
-      { BE: 0, FE: 0, QA: 0, PM: 0 }, // Neutral
-      { BE: -1, FE: 1, QA: 1, PM: 2 }, // High
-      { BE: -2, FE: 2, QA: 2, PM: 4 }, // Very high
+      { BE: 2, FE: 0, QA: 2, PM: 0 }, // SD → BE / QA
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // D → QA
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // N → PM
+      { BE: 0, FE: 1, QA: 0, PM: 1 }, // A → FE / PM
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SA → FE
     ],
     optionMetadata: [
       {
-        signals: ["Technical focus", "System-oriented thinking"],
-        evidence: "You prefer working with systems and code rather than direct user interaction.",
+        signals: ["Technical focus", "System-oriented", "Preference for technical work"],
+        evidence: "You prefer working with systems and data rather than direct user interaction.",
       },
       {
         signals: ["Moderate user awareness", "Technical preference"],
-        evidence: "You understand users matter but prefer to focus on technical implementation.",
+        evidence: "You understand users matter but prefer focusing on technical implementation.",
       },
       {
         signals: ["Balanced perspective", "Flexible approach"],
-        evidence: "You're open to user interaction when needed but don't seek it out actively.",
+        evidence: "You're open to user interaction when needed but don't actively seek it out.",
       },
       {
-        signals: ["User empathy", "User-centered thinking"],
-        evidence: "You value understanding user needs directly and find it informs better solutions.",
+        signals: ["User empathy", "Stakeholder engagement", "User-centered thinking"],
+        evidence: "You value understanding user needs directly and find it improves your work.",
       },
       {
         signals: ["Strong user empathy", "User advocacy", "Customer focus"],
-        evidence: "You believe the best products come from deep understanding of user needs and experiences.",
+        evidence: "You believe the best outputs come from deep understanding of how users actually use them.",
       },
     ],
   },
@@ -375,35 +363,35 @@ export const QUESTIONS: Question[] = [
     id: 6,
     type: "forced_choice",
     prompt:
-      "What type of problem-solving approach do you prefer?",
+      "You encounter a problem you don't fully understand. What's your first move?",
     options: [
-      "Breaking down complex systems into smaller components",
-      "Creating intuitive and visually appealing solutions",
-      "Systematically identifying and preventing issues",
-      "Balancing multiple constraints and requirements",
+      "Map the system or logic end-to-end",
+      "Try small changes to see what improves",
+      "Reproduce and document the issue precisely",
+      "Clarify impact, urgency, and ownership",
     ],
     scoring: [
-      { BE: 4, FE: 2, QA: 2, PM: 3 }, // Breaking down systems
-      { BE: 1, FE: 4, QA: 1, PM: 2 }, // Visual solutions
-      { BE: 2, FE: 1, QA: 4, PM: 2 }, // Preventing issues
-      { BE: 2, FE: 2, QA: 2, PM: 4 }, // Balancing constraints
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // B → FE
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // D → PM
     ],
     optionMetadata: [
       {
-        signals: ["Decomposition", "System thinking", "Analytical approach"],
-        evidence: "You tackle complexity by breaking it into manageable pieces and understanding how they connect.",
+        signals: ["System thinking", "Root-cause analysis", "Comprehensive understanding"],
+        evidence: "You start by understanding the full picture before making changes.",
       },
       {
-        signals: ["Visual thinking", "User experience", "Creative problem-solving"],
-        evidence: "You solve problems by making them visible, intuitive, and appealing to users.",
+        signals: ["Rapid iteration", "Experimental approach", "User feedback"],
+        evidence: "You prefer to try things and see what works, learning through experimentation.",
       },
       {
-        signals: ["Risk spotting", "Preventive thinking", "Systematic analysis"],
-        evidence: "You approach problems by identifying potential issues before they become real problems.",
+        signals: ["Systematic documentation", "Precision", "Quality mindset"],
+        evidence: "You want to understand the problem exactly as it is before attempting a solution.",
       },
       {
-        signals: ["Prioritization", "Stakeholder management", "Balanced decision-making"],
-        evidence: "You excel at weighing competing needs and finding solutions that satisfy multiple constraints.",
+        signals: ["Stakeholder management", "Prioritization", "Context gathering"],
+        evidence: "You first understand who's affected, how urgent it is, and who should handle it.",
       },
     ],
   },
@@ -411,47 +399,35 @@ export const QUESTIONS: Question[] = [
     id: 7,
     type: "multiple_choice",
     prompt:
-      "Which tools or technologies interest you most? (Select all that apply)",
+      "Which types of tools are you most comfortable working with? (Select up to 2)",
     options: [
-      "Docker, Kubernetes, cloud infrastructure",
-      "React, Vue, or other frontend frameworks",
-      "Selenium, Jest, Cypress testing tools",
-      "Jira, Confluence, product analytics",
-      "PostgreSQL, Redis, message queues",
-      "Figma, design systems, UI libraries",
+      "Data models, queries, calculations, or transformations",
+      "Dashboards, reports, UI configuration",
+      "Validation rules, testing tools, quality checks",
+      "Workflow tools, deployment processes, access/security",
     ],
     scoring: [
-      { BE: 4, FE: 1, QA: 2, PM: 1 }, // Docker/Kubernetes
-      { BE: 1, FE: 4, QA: 1, PM: 1 }, // Frontend frameworks
-      { BE: 1, FE: 1, QA: 4, PM: 1 }, // Testing tools
-      { BE: 1, FE: 1, QA: 2, PM: 4 }, // Jira/Confluence
-      { BE: 4, FE: 0, QA: 1, PM: 1 }, // Databases/queues
-      { BE: 0, FE: 4, QA: 1, PM: 2 }, // Figma/design
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Data models → BE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Dashboards → FE
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Validation rules → QA
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Workflow tools → PM
     ],
     optionMetadata: [
       {
-        signals: ["Infrastructure", "DevOps", "System scalability"],
-        evidence: "You're interested in how applications run at scale and how infrastructure supports them.",
+        signals: ["Data modeling", "Technical depth", "System architecture"],
+        evidence: "You're comfortable working with data structures, queries, and transformations.",
       },
       {
-        signals: ["Frontend development", "User interface", "Modern web technologies"],
-        evidence: "You enjoy building interactive user interfaces with modern frameworks and tools.",
+        signals: ["User interface", "Presentation", "Usability"],
+        evidence: "You enjoy working with tools that help users see and interact with information.",
       },
       {
-        signals: ["Test automation", "Quality assurance", "Systematic validation"],
-        evidence: "You value tools that help ensure software quality through automated testing.",
+        signals: ["Quality assurance", "Validation", "Systematic checking"],
+        evidence: "You value tools that help ensure accuracy and catch problems.",
       },
       {
-        signals: ["Product management", "Collaboration", "Data-driven decisions"],
-        evidence: "You're drawn to tools that help teams collaborate and make decisions based on data.",
-      },
-      {
-        signals: ["Data persistence", "System architecture", "Performance optimization"],
-        evidence: "You're interested in how data is stored, retrieved, and processed efficiently.",
-      },
-      {
-        signals: ["Design systems", "Visual design", "UI consistency"],
-        evidence: "You care about creating cohesive, reusable design patterns that improve user experience.",
+        signals: ["Process management", "Coordination", "Operational tools"],
+        evidence: "You're comfortable with tools that help manage workflows and access.",
       },
     ],
   },
@@ -459,24 +435,24 @@ export const QUESTIONS: Question[] = [
     id: 8,
     type: "likert",
     prompt:
-      "How comfortable are you with debugging production issues under time pressure?",
+      "I'm comfortable investigating issues in live systems under time pressure.",
     options: [
-      "Very uncomfortable",
-      "Somewhat uncomfortable",
+      "Strongly Disagree",
+      "Disagree",
       "Neutral",
-      "Comfortable",
-      "Very comfortable",
+      "Agree",
+      "Strongly Agree",
     ],
     scoring: [
-      { BE: -1, FE: -1, QA: 0, PM: -2 }, // Very uncomfortable
-      { BE: 0, FE: 0, QA: 1, PM: -1 }, // Somewhat uncomfortable
-      { BE: 1, FE: 1, QA: 1, PM: 0 }, // Neutral
-      { BE: 3, FE: 2, QA: 2, PM: 1 }, // Comfortable
-      { BE: 4, FE: 3, QA: 3, PM: 1 }, // Very comfortable
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // SD → QA
+      { BE: 0, FE: 1, QA: 1, PM: 0 }, // D → QA / FE
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // N → PM
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // SA → BE
     ],
     optionMetadata: [
       {
-        signals: ["Preference for stability", "Planned work"],
+        signals: ["Preference for stability", "Planned work", "Controlled environments"],
         evidence: "You prefer working in controlled environments where issues can be addressed methodically.",
       },
       {
@@ -488,7 +464,7 @@ export const QUESTIONS: Question[] = [
         evidence: "You can work under pressure when needed but don't actively seek high-stress situations.",
       },
       {
-        signals: ["Problem-solving under pressure", "Crisis management", "Technical troubleshooting"],
+        signals: ["Problem-solving under pressure", "Technical troubleshooting", "Crisis management"],
         evidence: "You stay calm and focused when production issues arise, using systematic debugging approaches.",
       },
       {
@@ -501,35 +477,35 @@ export const QUESTIONS: Question[] = [
     id: 9,
     type: "forced_choice",
     prompt:
-      "What motivates you most in your work?",
+      "What gives you the most satisfaction at work?",
     options: [
-      "Building robust and scalable systems",
-      "Creating beautiful and functional user interfaces",
-      "Ensuring quality and preventing bugs",
-      "Delivering value and meeting business goals",
+      "Solving a hard problem others couldn't",
+      "Seeing users quickly understand and adopt something",
+      "Knowing errors were prevented before they caused issues",
+      "Seeing a complex effort run smoothly end-to-end",
     ],
     scoring: [
-      { BE: 5, FE: 1, QA: 2, PM: 2 }, // Robust systems
-      { BE: 0, FE: 5, QA: 1, PM: 2 }, // Beautiful interfaces
-      { BE: 1, FE: 1, QA: 5, PM: 1 }, // Quality assurance
-      { BE: 1, FE: 2, QA: 1, PM: 5 }, // Business value
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // B → FE
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // D → PM
     ],
     optionMetadata: [
       {
-        signals: ["System architecture", "Scalability", "Technical excellence"],
-        evidence: "You're driven by creating systems that are reliable, performant, and can grow with demand.",
+        signals: ["Technical excellence", "Problem-solving", "Intellectual challenge"],
+        evidence: "You find deep satisfaction in tackling difficult technical problems and finding solutions.",
       },
       {
-        signals: ["Visual design", "User experience", "Creative expression"],
-        evidence: "You find motivation in crafting interfaces that are both aesthetically pleasing and highly functional.",
+        signals: ["User adoption", "Usability", "User empathy"],
+        evidence: "You're motivated by seeing users quickly understand and benefit from your work.",
       },
       {
-        signals: ["Quality mindset", "Risk prevention", "Attention to detail"],
-        evidence: "You're motivated by ensuring products work correctly and preventing problems before they impact users.",
+        signals: ["Quality assurance", "Risk prevention", "Preventive thinking"],
+        evidence: "You take satisfaction in knowing you prevented problems before they could cause issues.",
       },
       {
-        signals: ["Business impact", "Value delivery", "Stakeholder success"],
-        evidence: "You're driven by seeing your work make a real difference to users and the business.",
+        signals: ["Coordination", "Process excellence", "End-to-end success"],
+        evidence: "You find satisfaction in seeing complex projects come together smoothly and successfully.",
       },
     ],
   },
@@ -537,47 +513,35 @@ export const QUESTIONS: Question[] = [
     id: 10,
     type: "multiple_choice",
     prompt:
-      "What activities do you enjoy in your daily work? (Select all that apply)",
+      "What activities do you most enjoy day-to-day? (Select up to 2)",
     options: [
-      "Optimizing database queries and API performance",
-      "Prototyping new UI components and interactions",
-      "Writing test cases and regression testing",
-      "Conducting user interviews and analyzing metrics",
-      "Designing API contracts and data models",
-      "Ensuring cross-browser compatibility",
+      "Deep investigation and analysis",
+      "Refining layout, wording, or usability",
+      "Reviewing work for accuracy and consistency",
+      "Planning, coordinating, and communicating",
     ],
     scoring: [
-      { BE: 4, FE: 1, QA: 1, PM: 1 }, // Optimizing queries
-      { BE: 0, FE: 4, QA: 0, PM: 1 }, // Prototyping UI
-      { BE: 1, FE: 1, QA: 4, PM: 1 }, // Test cases
-      { BE: 0, FE: 1, QA: 1, PM: 4 }, // User interviews
-      { BE: 4, FE: 1, QA: 1, PM: 2 }, // API contracts
-      { BE: 0, FE: 4, QA: 2, PM: 1 }, // Cross-browser
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Deep investigation → BE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Refining layout → FE
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Reviewing work → QA
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Planning/coordinating → PM
     ],
     optionMetadata: [
       {
-        signals: ["Performance optimization", "Root-cause thinking", "Technical depth"],
-        evidence: "You enjoy the challenge of making systems faster and more efficient through careful analysis and optimization.",
+        signals: ["Analytical thinking", "Deep dive", "Problem-solving"],
+        evidence: "You enjoy digging deep into problems and understanding them thoroughly.",
       },
       {
-        signals: ["Rapid prototyping", "Creative exploration", "User experience"],
-        evidence: "You love experimenting with new interface ideas and seeing how users interact with them.",
+        signals: ["User experience", "Attention to detail", "Iterative improvement"],
+        evidence: "You find satisfaction in making outputs clearer, more usable, and better presented.",
       },
       {
-        signals: ["Systematic testing", "Quality assurance", "Preventive thinking"],
-        evidence: "You find satisfaction in building comprehensive test coverage that catches edge cases and regressions.",
+        signals: ["Quality assurance", "Attention to detail", "Systematic review"],
+        evidence: "You take pride in ensuring work is accurate and consistent.",
       },
       {
-        signals: ["User research", "Data analysis", "User empathy"],
-        evidence: "You enjoy learning directly from users and using data to inform product decisions.",
-      },
-      {
-        signals: ["API design", "System architecture", "Technical planning"],
-        evidence: "You enjoy designing clean interfaces between systems that are maintainable and extensible.",
-      },
-      {
-        signals: ["Attention to detail", "Cross-platform thinking", "User experience"],
-        evidence: "You take pride in ensuring products work consistently across different browsers and devices.",
+        signals: ["Coordination", "Communication", "Strategic planning"],
+        evidence: "You enjoy bringing people together and ensuring work flows smoothly.",
       },
     ],
   },
@@ -679,13 +643,14 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
           maxQuestionScore = maxScore;
         }
 
-        // Count strong signals (+2 or +3) and collect evidence
-        const isStrongSignal = maxScore >= 2;
+        // Count strong signals: forced choice (always +2) or Likert extremes (+2)
+        // For forced choice and likert, strong signal = score of 2
+        const isStrongSignal = maxScore === 2;
         if (isStrongSignal) {
-          if (scoring.BE >= 2) strongSignalCounts.BE++;
-          if (scoring.FE >= 2) strongSignalCounts.FE++;
-          if (scoring.QA >= 2) strongSignalCounts.QA++;
-          if (scoring.PM >= 2) strongSignalCounts.PM++;
+          if (scoring.BE === 2) strongSignalCounts.BE++;
+          if (scoring.FE === 2) strongSignalCounts.FE++;
+          if (scoring.QA === 2) strongSignalCounts.QA++;
+          if (scoring.PM === 2) strongSignalCounts.PM++;
 
           // Add to evidence highlights
           evidenceHighlights.push({
@@ -738,24 +703,9 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
               questionMaxScore = maxScore;
             }
 
-            // Count strong signals (+2 or +3) and collect evidence
-            const isStrongSignal = maxScore >= 2;
-            if (isStrongSignal) {
-              if (scoring.BE >= 2) strongSignalCounts.BE++;
-              if (scoring.FE >= 2) strongSignalCounts.FE++;
-              if (scoring.QA >= 2) strongSignalCounts.QA++;
-              if (scoring.PM >= 2) strongSignalCounts.PM++;
-
-              // Add to evidence highlights
-              evidenceHighlights.push({
-                questionId: question.id,
-                questionPrompt: question.prompt,
-                optionText: question.options[optionIndex],
-                evidence: metadata.evidence,
-                signals: metadata.signals,
-                score: maxScore,
-              });
-            }
+            // Multi-select questions use +1 per selection, so they don't count as strong signals
+            // Strong signals are only forced choice (+2) and Likert extremes (+2)
+            // Multi-select selections are +1 each, so skip strong signal tracking
           }
         }
 
@@ -783,13 +733,13 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     [RoleId, number]
   >;
 
-  // Sort by score (descending), then by strong-signal count, then alphabetically
+  // Sort by score (descending), then by strong-signal count as first tie-breaker, then alphabetically
   roleEntries.sort((a, b) => {
     // First: by total score
     if (b[1] !== a[1]) {
       return b[1] - a[1]; // Higher score first
     }
-    // Second: by strong-signal count (tie-breaker)
+    // Second: by strong-signal count (FIRST tie-breaker when scores are equal)
     const aStrongSignals = strongSignalCounts[a[0]];
     const bStrongSignals = strongSignalCounts[b[0]];
     if (bStrongSignals !== aStrongSignals) {
