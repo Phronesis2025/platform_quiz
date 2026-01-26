@@ -151,6 +151,20 @@ export async function POST(request: NextRequest) {
     // Store both raw answers AND computed results
     console.log("Creating submission in Redis...");
     console.log("REDIS_URL is set:", !!process.env.REDIS_URL);
+    console.log("REDIS_URL length:", process.env.REDIS_URL?.length || 0);
+    
+    // Validate that we have all required data before attempting to save
+    if (!scoringResult.totals || !scoringResult.ranked || !scoringResult.primaryRole) {
+      console.error("Missing required scoring data:", {
+        hasTotals: !!scoringResult.totals,
+        hasRanked: !!scoringResult.ranked,
+        hasPrimaryRole: !!scoringResult.primaryRole,
+      });
+      return NextResponse.json(
+        { error: "Failed to compute quiz scores" },
+        { status: 500 }
+      );
+    }
     
     const submission = await createSubmission({
       name: name?.trim() || null,

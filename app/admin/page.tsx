@@ -441,7 +441,16 @@ export default function AdminPage() {
                       Top 3 Skills
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Score Spread
+                      BE Score
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      FE Score
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      QA Score
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      PM Score
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       View Details
@@ -496,7 +505,19 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        <span className="font-medium">{submission.scoreSpread}</span>
+                        <span className="font-medium">{submission.totals.BE}</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        <span className="font-medium">{submission.totals.FE}</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        <span className="font-medium">{submission.totals.QA}</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        <span className="font-medium">{submission.totals.PM}</span>
                         <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
