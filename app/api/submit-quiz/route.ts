@@ -22,11 +22,15 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log("Quiz submission request received");
+    
     // Parse request body once
     let requestBody: unknown;
     try {
       requestBody = await request.json();
+      console.log("Request body parsed successfully");
     } catch (error) {
+      console.error("Failed to parse JSON:", error);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
@@ -50,9 +54,20 @@ export async function POST(request: NextRequest) {
     const ipAddress = getIPAddress(request);
     const ipHash = hashIP(ipAddress) || "unknown";
     const userAgent = request.headers.get("user-agent") || null;
+    
+    console.log("IP address:", ipAddress, "IP hash:", ipHash);
 
     // Check rate limit
-    const rateLimit = await getRateLimiter(ipHash);
+    let rateLimit;
+    try {
+      rateLimit = await getRateLimiter(ipHash);
+      console.log("Rate limit check:", { allowed: rateLimit.allowed, remaining: rateLimit.remaining });
+    } catch (rateLimitError) {
+      console.error("Rate limit check failed:", rateLimitError);
+      // Continue anyway - don't block on rate limit errors
+      rateLimit = { allowed: true, remaining: 5, resetAt: Date.now() + 60000 };
+    }
+    
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -78,6 +93,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Strict validation with Zod (exclude accessCode from validation)
+    console.log("Validating submission data...");
     const validationResult = submissionRequestSchema.safeParse(submissionData);
     
     if (!validationResult.success) {
@@ -86,6 +102,8 @@ export async function POST(request: NextRequest) {
         path: issue.path.join("."),
         message: issue.message,
       }));
+      
+      console.error("Validation failed:", errors);
 
       return NextResponse.json(
         {
@@ -95,6 +113,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    console.log("Validation passed");
 
     const { responses, name, team } = validationResult.data;
 
@@ -108,9 +128,15 @@ export async function POST(request: NextRequest) {
 
     // CRITICAL: Compute scores server-side ONLY
     // Never trust any scores from the client - always recalculate
+    console.log("Computing scores...");
     const scoringResult = scoreResponses(quizResponses);
+    console.log("Scores computed:", {
+      primaryRole: scoringResult.primaryRole,
+      secondaryRole: scoringResult.secondaryRole,
+    });
 
     // Get role playbooks for recommendations
+    console.log("Getting role playbooks...");
     const primaryPlaybook = getRolePlaybookByString(scoringResult.primaryRole);
     const secondaryPlaybook = scoringResult.secondaryRole
       ? getRolePlaybook(scoringResult.secondaryRole)
@@ -119,9 +145,13 @@ export async function POST(request: NextRequest) {
     // Build recommendations from playbooks
     const primaryRecommendations = primaryPlaybook?.bestUsedFor || [];
     const secondaryRecommendations = secondaryPlaybook?.bestUsedFor || [];
+    console.log("Recommendations built");
 
     // Create submission in Redis
     // Store both raw answers AND computed results
+    console.log("Creating submission in Redis...");
+    console.log("REDIS_URL is set:", !!process.env.REDIS_URL);
+    
     const submission = await createSubmission({
       name: name?.trim() || null,
       team: team?.trim() || null,
@@ -149,6 +179,8 @@ export async function POST(request: NextRequest) {
       userAgent,
       ipHash,
     });
+    
+    console.log("Submission created successfully:", submission.id);
 
     // Return success response with submission ID
     // Return computed scores (never trust client-provided scores)
@@ -187,35 +219,50 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("Error submitting quiz:", error);
+    console.error("=== ERROR SUBMITTING QUIZ ===");
+    console.error("Error type:", typeof error);
+    console.error("Error:", error);
     
     // Log the full error for debugging
     if (error instanceof Error) {
       console.error("Error name:", error.name);
       console.error("Error message:", error.message);
       console.error("Error stack:", error.stack);
+    } else {
+      console.error("Non-Error object:", JSON.stringify(error, null, 2));
     }
     
+    // Check environment
+    console.error("Environment check:", {
+      NODE_ENV: process.env.NODE_ENV,
+      REDIS_URL_set: !!process.env.REDIS_URL,
+      REDIS_URL_length: process.env.REDIS_URL?.length || 0,
+    });
+    
     // Check if it's a Redis connection error
-    const isRedisError = error instanceof Error && (
-      error.message.includes("Redis") ||
-      error.message.includes("KV") ||
-      error.message.includes("connection") ||
-      error.message.includes("REDIS_URL")
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isRedisError = errorMessage.includes("Redis") ||
+      errorMessage.includes("KV") ||
+      errorMessage.includes("connection") ||
+      errorMessage.includes("REDIS_URL") ||
+      errorMessage.includes("ECONNREFUSED") ||
+      errorMessage.includes("ETIMEDOUT");
     
     // Return more detailed error in development or for Redis errors
-    const errorMessage =
+    const userFacingError =
       process.env.NODE_ENV === "development" || isRedisError
         ? error instanceof Error
           ? `${error.name}: ${error.message}`
-          : "Failed to process quiz submission"
+          : `Error: ${String(error)}`
         : "Failed to process quiz submission";
 
     return NextResponse.json(
       { 
-        error: errorMessage,
-        ...(isRedisError && { hint: "Check that REDIS_URL is set in Vercel environment variables" })
+        error: userFacingError,
+        ...(isRedisError && { 
+          hint: "Database connection issue. Check that REDIS_URL is set correctly.",
+          details: process.env.NODE_ENV === "development" ? errorMessage : undefined
+        })
       },
       { status: 500 }
     );

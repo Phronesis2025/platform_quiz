@@ -19,6 +19,7 @@ const sessionOptions = {
     httpOnly: true,
     maxAge: 60 * 60 * 24, // 24 hours in seconds
     sameSite: "lax" as const,
+    path: "/", // Ensure cookie is available for all paths
   },
 };
 

@@ -41,6 +41,8 @@ export default function AdminPage() {
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [isClearingData, setIsClearingData] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
     // Fetch all submissions from API
@@ -178,6 +180,33 @@ export default function AdminPage() {
     }
   };
 
+  // Handle clear all data
+  const handleClearAllData = async () => {
+    setIsClearingData(true);
+    try {
+      const response = await fetch("/api/admin/clear-data", {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Refresh the page to show empty state
+        window.location.reload();
+      } else {
+        console.error("Failed to clear data:", data.error);
+        alert(`Failed to clear data: ${data.error || "Unknown error"}`);
+        setIsClearingData(false);
+        setShowClearConfirm(false);
+      }
+    } catch (error) {
+      console.error("Error clearing data:", error);
+      alert("An error occurred while clearing data. Please try again.");
+      setIsClearingData(false);
+      setShowClearConfirm(false);
+    }
+  };
+
   // Export to CSV
   const exportToCSV = () => {
     const headers = [
@@ -288,14 +317,24 @@ export default function AdminPage() {
                 </p>
               </div>
             </div>
-            {filteredSubmissions.length > 0 && (
-              <button
-                onClick={exportToCSV}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap"
-              >
-                Export to CSV
-              </button>
-            )}
+            <div className="flex gap-3">
+              {filteredSubmissions.length > 0 && (
+                <button
+                  onClick={exportToCSV}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap"
+                >
+                  Export to CSV
+                </button>
+              )}
+              {submissions.length > 0 && (
+                <button
+                  onClick={() => setShowClearConfirm(true)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap"
+                >
+                  Clear All Data
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -612,6 +651,44 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Clear Data Confirmation Modal */}
+        {showClearConfirm && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => !isClearingData && setShowClearConfirm(false)}
+          >
+            <div
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  Clear All Data
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Are you sure you want to delete all {submissions.length} submission(s)? This action cannot be undone.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setShowClearConfirm(false)}
+                    disabled={isClearingData}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleClearAllData}
+                    disabled={isClearingData}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+                  >
+                    {isClearingData ? "Deleting..." : "Delete All"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

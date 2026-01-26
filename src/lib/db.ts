@@ -26,7 +26,7 @@ let isConnecting = false;
  * In serverless environments (Vercel), connections may not persist between invocations.
  * This function ensures we have a working connection, reconnecting if necessary.
  */
-async function getRedisClient() {
+export async function getRedisClient() {
   const redisUrl = process.env.REDIS_URL;
   
   if (!redisUrl) {

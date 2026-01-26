@@ -21,15 +21,21 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
+      console.log("Attempting login...");
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ password }),
+        credentials: "include", // Ensure cookies are sent and received
       });
 
+      console.log("Response status:", response.status);
+      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+      
       const data = await response.json();
+      console.log("Response data:", data);
 
       if (!response.ok) {
         setError(data.error || "Invalid password");
@@ -38,9 +44,23 @@ function LoginForm() {
       }
 
       // Success - redirect to admin page or original destination
-      router.push(redirectTo);
-      router.refresh(); // Refresh to update middleware check
+      console.log("Login successful, redirecting to:", redirectTo);
+      
+      // Note: set-cookie header is not accessible via response.headers.get() due to browser security
+      // The cookie should be set automatically by the browser
+      console.log("Login successful, preparing redirect...");
+      
+      // Reset loading state before redirect to prevent UI freeze
+      setIsLoading(false);
+      
+      // Use window.location for a full page reload to ensure session cookie is recognized
+      // Small delay to ensure cookie is processed
+      setTimeout(() => {
+        console.log("Executing redirect to:", redirectTo);
+        window.location.href = redirectTo;
+      }, 100);
     } catch (err) {
+      console.error("Login error:", err);
       setError("An error occurred. Please try again.");
       setIsLoading(false);
     }
@@ -76,6 +96,7 @@ function LoginForm() {
                 placeholder="Enter admin password"
                 required
                 autoFocus
+                autoComplete="current-password"
                 disabled={isLoading}
               />
             </div>
