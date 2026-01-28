@@ -40,6 +40,9 @@ export async function GET(request: NextRequest) {
         primaryRecommendations: submission.primaryRecommendations,
         secondaryRecommendations: submission.secondaryRecommendations,
         summaryText: submission.summaryText,
+        dominanceScore: submission.dominanceScore,
+        confidenceBand: submission.confidenceBand,
+        bonusQuestionsShown: submission.bonusQuestionsShown,
       };
     });
 

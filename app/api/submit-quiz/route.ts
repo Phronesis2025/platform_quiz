@@ -4,14 +4,17 @@ import { createSubmission, getSubmission } from "@/src/lib/db";
 import { hashIP, getIPAddress } from "@/src/lib/utils";
 import { submissionRequestSchema } from "@/src/lib/validation";
 import { getRateLimiter } from "@/src/lib/rate-limit";
-import { getRolePlaybookByString, getRolePlaybook } from "@/src/lib/rolePlaybooks";
+import {
+  getRolePlaybookByString,
+  getRolePlaybook,
+} from "@/src/lib/rolePlaybooks";
 
 // Force dynamic rendering - this route should never be statically generated
 export const dynamic = "force-dynamic";
 
 /**
  * API route to submit quiz responses
- * 
+ *
  * This endpoint:
  * - Validates input strictly using Zod
  * - Rejects partial quizzes (all questions must be answered)
@@ -23,7 +26,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     console.log("Quiz submission request received");
-    
+
     // Parse request body once
     let requestBody: unknown;
     try {
@@ -33,7 +36,7 @@ export async function POST(request: NextRequest) {
       console.error("Failed to parse JSON:", error);
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
       if (!providedCode || providedCode !== requiredCode) {
         return NextResponse.json(
           { error: "Invalid or missing access code" },
-          { status: 403 }
+          { status: 403 },
         );
       }
     }
@@ -54,20 +57,23 @@ export async function POST(request: NextRequest) {
     const ipAddress = getIPAddress(request);
     const ipHash = hashIP(ipAddress) || "unknown";
     const userAgent = request.headers.get("user-agent") || null;
-    
+
     console.log("IP address:", ipAddress, "IP hash:", ipHash);
 
     // Check rate limit
     let rateLimit;
     try {
       rateLimit = await getRateLimiter(ipHash);
-      console.log("Rate limit check:", { allowed: rateLimit.allowed, remaining: rateLimit.remaining });
+      console.log("Rate limit check:", {
+        allowed: rateLimit.allowed,
+        remaining: rateLimit.remaining,
+      });
     } catch (rateLimitError) {
       console.error("Rate limit check failed:", rateLimitError);
       // Continue anyway - don't block on rate limit errors
       rateLimit = { allowed: true, remaining: 5, resetAt: Date.now() + 60000 };
     }
-    
+
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -77,12 +83,14 @@ export async function POST(request: NextRequest) {
         {
           status: 429,
           headers: {
-            "Retry-After": Math.ceil((rateLimit.resetAt - Date.now()) / 1000).toString(),
+            "Retry-After": Math.ceil(
+              (rateLimit.resetAt - Date.now()) / 1000,
+            ).toString(),
             "X-RateLimit-Limit": "5",
             "X-RateLimit-Remaining": "0",
             "X-RateLimit-Reset": rateLimit.resetAt.toString(),
           },
-        }
+        },
       );
     }
 
@@ -95,14 +103,14 @@ export async function POST(request: NextRequest) {
     // Strict validation with Zod (exclude accessCode from validation)
     console.log("Validating submission data...");
     const validationResult = submissionRequestSchema.safeParse(submissionData);
-    
+
     if (!validationResult.success) {
       // Return detailed validation errors
       const errors = validationResult.error.issues.map((issue) => ({
         path: issue.path.join("."),
         message: issue.message,
       }));
-      
+
       console.error("Validation failed:", errors);
 
       return NextResponse.json(
@@ -110,13 +118,14 @@ export async function POST(request: NextRequest) {
           error: "Validation failed",
           details: errors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
-    
+
     console.log("Validation passed");
 
-    const { responses, name, team } = validationResult.data;
+    const { responses, name, team, bonusQuestionsShown } =
+      validationResult.data;
 
     // Convert responses to the format expected by scoreResponses
     // (Zod validates the structure, but we need to ensure types match)
@@ -152,9 +161,13 @@ export async function POST(request: NextRequest) {
     console.log("Creating submission in Redis...");
     console.log("REDIS_URL is set:", !!process.env.REDIS_URL);
     console.log("REDIS_URL length:", process.env.REDIS_URL?.length || 0);
-    
+
     // Validate that we have all required data before attempting to save
-    if (!scoringResult.totals || !scoringResult.ranked || !scoringResult.primaryRole) {
+    if (
+      !scoringResult.totals ||
+      !scoringResult.ranked ||
+      !scoringResult.primaryRole
+    ) {
       console.error("Missing required scoring data:", {
         hasTotals: !!scoringResult.totals,
         hasRanked: !!scoringResult.ranked,
@@ -162,10 +175,10 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         { error: "Failed to compute quiz scores" },
-        { status: 500 }
+        { status: 500 },
       );
     }
-    
+
     const submission = await createSubmission({
       name: name?.trim() || null,
       team: team?.trim() || null,
@@ -190,10 +203,14 @@ export async function POST(request: NextRequest) {
       // Store recommendations from role playbooks
       primaryRecommendations,
       secondaryRecommendations,
+      // Store enhanced scoring metrics
+      dominanceScore: scoringResult.dominanceScore,
+      confidenceBand: scoringResult.confidenceBand,
+      bonusQuestionsShown: bonusQuestionsShown || [],
       userAgent,
       ipHash,
     });
-    
+
     console.log("Submission created successfully:", submission.id);
 
     // Return success response with submission ID
@@ -219,6 +236,9 @@ export async function POST(request: NextRequest) {
             evidenceHighlights: submission.evidenceHighlights,
             primaryRecommendations: submission.primaryRecommendations,
             secondaryRecommendations: submission.secondaryRecommendations,
+            dominanceScore: submission.dominanceScore,
+            confidenceBand: submission.confidenceBand,
+            bonusQuestionsShown: submission.bonusQuestionsShown,
           },
           timestamp: submission.createdAt,
         },
@@ -230,13 +250,13 @@ export async function POST(request: NextRequest) {
           "X-RateLimit-Remaining": rateLimit.remaining.toString(),
           "X-RateLimit-Reset": rateLimit.resetAt.toString(),
         },
-      }
+      },
     );
   } catch (error) {
     console.error("=== ERROR SUBMITTING QUIZ ===");
     console.error("Error type:", typeof error);
     console.error("Error:", error);
-    
+
     // Log the full error for debugging
     if (error instanceof Error) {
       console.error("Error name:", error.name);
@@ -245,23 +265,24 @@ export async function POST(request: NextRequest) {
     } else {
       console.error("Non-Error object:", JSON.stringify(error, null, 2));
     }
-    
+
     // Check environment
     console.error("Environment check:", {
       NODE_ENV: process.env.NODE_ENV,
       REDIS_URL_set: !!process.env.REDIS_URL,
       REDIS_URL_length: process.env.REDIS_URL?.length || 0,
     });
-    
+
     // Check if it's a Redis connection error
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const isRedisError = errorMessage.includes("Redis") ||
+    const isRedisError =
+      errorMessage.includes("Redis") ||
       errorMessage.includes("KV") ||
       errorMessage.includes("connection") ||
       errorMessage.includes("REDIS_URL") ||
       errorMessage.includes("ECONNREFUSED") ||
       errorMessage.includes("ETIMEDOUT");
-    
+
     // Return more detailed error in development or for Redis errors
     const userFacingError =
       process.env.NODE_ENV === "development" || isRedisError
@@ -271,14 +292,15 @@ export async function POST(request: NextRequest) {
         : "Failed to process quiz submission";
 
     return NextResponse.json(
-      { 
+      {
         error: userFacingError,
-        ...(isRedisError && { 
+        ...(isRedisError && {
           hint: "Database connection issue. Check that REDIS_URL is set correctly.",
-          details: process.env.NODE_ENV === "development" ? errorMessage : undefined
-        })
+          details:
+            process.env.NODE_ENV === "development" ? errorMessage : undefined,
+        }),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -295,7 +317,7 @@ export async function GET(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { error: "Submission ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -305,7 +327,7 @@ export async function GET(request: NextRequest) {
     if (!uuidRegex.test(id)) {
       return NextResponse.json(
         { error: "Invalid submission ID format" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -315,7 +337,7 @@ export async function GET(request: NextRequest) {
     if (!submission) {
       return NextResponse.json(
         { error: "Submission not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -337,16 +359,19 @@ export async function GET(request: NextRequest) {
           evidenceHighlights: submission.evidenceHighlights, // Server-computed
           primaryRecommendations: submission.primaryRecommendations, // Server-computed
           secondaryRecommendations: submission.secondaryRecommendations, // Server-computed
+          dominanceScore: submission.dominanceScore, // Server-computed
+          confidenceBand: submission.confidenceBand, // Server-computed
+          bonusQuestionsShown: submission.bonusQuestionsShown, // Which bonus questions were shown
         },
         timestamp: submission.createdAt,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error retrieving submission:", error);
     return NextResponse.json(
       { error: "Failed to retrieve submission" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

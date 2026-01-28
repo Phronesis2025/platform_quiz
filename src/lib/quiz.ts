@@ -1,6 +1,6 @@
 /**
  * Quiz Module
- * 
+ *
  * This module contains role definitions, quiz questions, and scoring logic.
  * All data is structured for easy analysis and the scoring function is pure and testable.
  */
@@ -103,6 +103,15 @@ export interface EvidenceHighlight {
 }
 
 /**
+ * Confidence band indicating how clear the role assignment is
+ * - Strong: Clear winner with high dominance (≥6 points difference)
+ * - Clear: Clear winner with moderate dominance (3-5 points difference)
+ * - Split: Close scores, may indicate hybrid strengths (≤2 points difference)
+ * - Hybrid: Tied roles or very balanced profile
+ */
+export type ConfidenceBand = "Strong" | "Clear" | "Split" | "Hybrid";
+
+/**
  * Scoring result containing all calculated data
  */
 export interface ScoringResult {
@@ -114,6 +123,9 @@ export interface ScoringResult {
   narrative: string;
   skillProfile: SkillProfile; // Accumulated skill tags from all selected options
   evidenceHighlights: EvidenceHighlight[]; // Top 3-5 strongest signal answers with evidence
+  dominanceScore: number; // Difference between top and second place scores
+  confidenceBand: ConfidenceBand; // Confidence level of the role assignment
+  bonusQuestionsShown?: number[]; // IDs of bonus questions that were shown
 }
 
 // ============================================================================
@@ -163,20 +175,31 @@ export const ROLES: Record<RoleId, Role> = {
 // ============================================================================
 
 /**
- * Array of 10 quiz questions designed to identify role fit
- * Questions use data-analyst-friendly wording and structured scoring
+ * Core 10-question set designed to identify role fit with high accuracy
+ *
+ * Scoring Rationale:
+ * - Forced choice questions award +2 points (strong signals) to clearly indicate role preference
+ * - Multiple choice questions award +1 point per selection (moderate signals) allowing multi-role strengths
+ * - Likert scale questions use +1/+2 scoring based on extremity of agreement/disagreement
+ *
+ * Question design focuses on:
+ * - Pressure situations (Q1, Q2)
+ * - Instinctive responses (Q2, Q5, Q9, Q10)
+ * - Risk tolerance (Q3)
+ * - Energy sources (Q4, Q6)
+ * - Software/tool awareness (Q7)
+ * - Production pressure handling (Q8)
  */
 export const QUESTIONS: Question[] = [
   {
     id: 1,
     type: "forced_choice",
-    prompt:
-      "When starting a project with unclear requirements and a tight timeline, what concerns you most?",
+    prompt: "A key report is wrong and leadership is waiting.",
     options: [
-      "Ensuring the underlying logic and data flow are correct",
-      "Making sure priorities, scope, and expectations are clear",
-      "Preventing errors or regressions later",
-      "Making sure the end result is intuitive and usable",
+      "Find the exact point where the logic broke",
+      "Clarify impact and reset expectations",
+      "Validate results before sharing anything",
+      "Adjust presentation so conclusions are clear",
     ],
     scoring: [
       { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
@@ -186,56 +209,70 @@ export const QUESTIONS: Question[] = [
     ],
     optionMetadata: [
       {
-        signals: ["Root-cause thinking", "System architecture", "Data integrity"],
-        evidence: "You prioritize getting the foundational logic right, even when requirements are unclear.",
+        signals: [
+          "Root-cause thinking",
+          "System architecture",
+          "Technical precision",
+        ],
+        evidence:
+          "You prioritize finding the exact technical issue even under pressure.",
       },
       {
-        signals: ["Prioritization under pressure", "Scope management", "Stakeholder communication"],
-        evidence: "You focus on clarifying what matters most and setting clear expectations before diving in.",
+        signals: [
+          "Stakeholder management",
+          "Impact assessment",
+          "Communication",
+        ],
+        evidence:
+          "You focus on managing expectations and clarifying impact before diving deep.",
       },
       {
-        signals: ["Risk spotting", "Preventive thinking", "Quality mindset"],
-        evidence: "You're concerned about preventing problems that could cause issues down the line.",
+        signals: ["Quality assurance", "Validation mindset", "Risk mitigation"],
+        evidence:
+          "You want to ensure accuracy before sharing anything, even when time is tight.",
       },
       {
-        signals: ["User empathy", "Usability focus", "User experience"],
-        evidence: "You want to ensure the end result makes sense to users and is easy to use.",
+        signals: ["User empathy", "Presentation clarity", "Usability focus"],
+        evidence:
+          "You prioritize making the output clear and understandable for leadership.",
       },
     ],
   },
   {
     id: 2,
-    type: "multiple_choice",
-    prompt:
-      "Which tasks do you find most engaging? (Select up to 2)",
+    type: "forced_choice",
+    prompt: "You discover a fix that might affect other areas.",
     options: [
-      "Tracing issues back to their root cause",
-      "Improving how information is presented to users",
-      "Verifying accuracy and catching edge cases",
-      "Coordinating work, priorities, and timelines",
+      "Trace dependencies before touching anything",
+      "Document and test possible side effects",
+      "Coordinate timing and communication",
+      "Apply the fix and monitor reactions",
     ],
     scoring: [
-      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Tracing issues → BE
-      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Improving presentation → FE
-      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Verifying accuracy → QA
-      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Coordinating work → PM
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // B → QA
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // C → PM
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // D → FE
     ],
     optionMetadata: [
       {
-        signals: ["Root-cause thinking", "Systematic investigation", "Problem-solving"],
-        evidence: "You enjoy digging deep to understand why something isn't working as expected.",
+        signals: ["System thinking", "Dependency analysis", "Technical depth"],
+        evidence:
+          "You prioritize understanding system dependencies before making changes.",
       },
       {
-        signals: ["User empathy", "Presentation clarity", "Usability focus"],
-        evidence: "You find satisfaction in making information clearer and more accessible to users.",
+        signals: ["Quality assurance", "Risk mitigation", "Testing mindset"],
+        evidence:
+          "You focus on documenting and testing potential side effects before proceeding.",
       },
       {
-        signals: ["Quality assurance", "Attention to detail", "Risk mitigation"],
-        evidence: "You take pride in catching errors and edge cases that others might miss.",
+        signals: ["Coordination", "Communication", "Change management"],
+        evidence:
+          "You prioritize coordinating timing and communicating impacts to stakeholders.",
       },
       {
-        signals: ["Coordination", "Prioritization", "Stakeholder management"],
-        evidence: "You enjoy bringing people together and ensuring work flows smoothly.",
+        signals: ["Rapid iteration", "User feedback", "Experimental approach"],
+        evidence: "You prefer to apply changes and monitor how users react.",
       },
     ],
   },
@@ -243,199 +280,7 @@ export const QUESTIONS: Question[] = [
     id: 3,
     type: "likert",
     prompt:
-      "When a deadline is tight, I prefer to slow down briefly to reduce future rework.",
-    options: [
-      "Strongly Disagree",
-      "Disagree",
-      "Neutral",
-      "Agree",
-      "Strongly Agree",
-    ],
-    scoring: [
-      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SD → FE
-      { BE: 0, FE: 1, QA: 0, PM: 1 }, // D → FE / PM
-      { BE: 1, FE: 0, QA: 0, PM: 0 }, // N → BE
-      { BE: 0, FE: 0, QA: 1, PM: 1 }, // A → QA / PM
-      { BE: 0, FE: 0, QA: 2, PM: 0 }, // SA → QA
-    ],
-    optionMetadata: [
-      {
-        signals: ["Speed preference", "Action-oriented", "Rapid iteration"],
-        evidence: "You prefer to move quickly and iterate rather than slowing down for planning.",
-      },
-      {
-        signals: ["Pragmatic balance", "Flexible approach"],
-        evidence: "You balance speed with some consideration for future impact.",
-      },
-      {
-        signals: ["Balanced perspective", "Context-dependent"],
-        evidence: "You adapt your approach based on the specific situation and context.",
-      },
-      {
-        signals: ["Preventive thinking", "Quality focus", "Long-term view"],
-        evidence: "You believe taking time upfront prevents problems and saves time later.",
-      },
-      {
-        signals: ["Quality-first mindset", "Risk mitigation", "Systematic approach"],
-        evidence: "You strongly believe that investing time in quality upfront prevents costly rework.",
-      },
-    ],
-  },
-  {
-    id: 4,
-    type: "forced_choice",
-    prompt:
-      "If you could master one capability, which would it be?",
-    options: [
-      "Diagnosing complex logic or data issues",
-      "Translating complex work into clear, usable outputs",
-      "Designing checks that prevent errors before release",
-      "Managing priorities, risks, and communication",
-    ],
-    scoring: [
-      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
-      { BE: 0, FE: 2, QA: 0, PM: 0 }, // B → FE
-      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
-      { BE: 0, FE: 0, QA: 0, PM: 2 }, // D → PM
-    ],
-    optionMetadata: [
-      {
-        signals: ["Technical depth", "Root-cause thinking", "Systematic analysis"],
-        evidence: "You want to excel at understanding and fixing complex technical problems.",
-      },
-      {
-        signals: ["Communication", "User empathy", "Clarity"],
-        evidence: "You value the ability to make complex information accessible and understandable.",
-      },
-      {
-        signals: ["Quality assurance", "Preventive thinking", "Risk mitigation"],
-        evidence: "You want to master building systems that catch problems before they reach users.",
-      },
-      {
-        signals: ["Stakeholder management", "Prioritization", "Coordination"],
-        evidence: "You believe success comes from effectively managing people, priorities, and risks.",
-      },
-    ],
-  },
-  {
-    id: 5,
-    type: "likert",
-    prompt:
-      "I enjoy working directly with users or stakeholders to understand how outputs are used.",
-    options: [
-      "Strongly Disagree",
-      "Disagree",
-      "Neutral",
-      "Agree",
-      "Strongly Agree",
-    ],
-    scoring: [
-      { BE: 2, FE: 0, QA: 2, PM: 0 }, // SD → BE / QA
-      { BE: 0, FE: 0, QA: 1, PM: 0 }, // D → QA
-      { BE: 0, FE: 0, QA: 0, PM: 1 }, // N → PM
-      { BE: 0, FE: 1, QA: 0, PM: 1 }, // A → FE / PM
-      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SA → FE
-    ],
-    optionMetadata: [
-      {
-        signals: ["Technical focus", "System-oriented", "Preference for technical work"],
-        evidence: "You prefer working with systems and data rather than direct user interaction.",
-      },
-      {
-        signals: ["Moderate user awareness", "Technical preference"],
-        evidence: "You understand users matter but prefer focusing on technical implementation.",
-      },
-      {
-        signals: ["Balanced perspective", "Flexible approach"],
-        evidence: "You're open to user interaction when needed but don't actively seek it out.",
-      },
-      {
-        signals: ["User empathy", "Stakeholder engagement", "User-centered thinking"],
-        evidence: "You value understanding user needs directly and find it improves your work.",
-      },
-      {
-        signals: ["Strong user empathy", "User advocacy", "Customer focus"],
-        evidence: "You believe the best outputs come from deep understanding of how users actually use them.",
-      },
-    ],
-  },
-  {
-    id: 6,
-    type: "forced_choice",
-    prompt:
-      "You encounter a problem you don't fully understand. What's your first move?",
-    options: [
-      "Map the system or logic end-to-end",
-      "Try small changes to see what improves",
-      "Reproduce and document the issue precisely",
-      "Clarify impact, urgency, and ownership",
-    ],
-    scoring: [
-      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
-      { BE: 0, FE: 2, QA: 0, PM: 0 }, // B → FE
-      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
-      { BE: 0, FE: 0, QA: 0, PM: 2 }, // D → PM
-    ],
-    optionMetadata: [
-      {
-        signals: ["System thinking", "Root-cause analysis", "Comprehensive understanding"],
-        evidence: "You start by understanding the full picture before making changes.",
-      },
-      {
-        signals: ["Rapid iteration", "Experimental approach", "User feedback"],
-        evidence: "You prefer to try things and see what works, learning through experimentation.",
-      },
-      {
-        signals: ["Systematic documentation", "Precision", "Quality mindset"],
-        evidence: "You want to understand the problem exactly as it is before attempting a solution.",
-      },
-      {
-        signals: ["Stakeholder management", "Prioritization", "Context gathering"],
-        evidence: "You first understand who's affected, how urgent it is, and who should handle it.",
-      },
-    ],
-  },
-  {
-    id: 7,
-    type: "multiple_choice",
-    prompt:
-      "Which types of tools are you most comfortable working with? (Select up to 2)",
-    options: [
-      "Data models, queries, calculations, or transformations",
-      "Dashboards, reports, UI configuration",
-      "Validation rules, testing tools, quality checks",
-      "Workflow tools, deployment processes, access/security",
-    ],
-    scoring: [
-      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Data models → BE
-      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Dashboards → FE
-      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Validation rules → QA
-      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Workflow tools → PM
-    ],
-    optionMetadata: [
-      {
-        signals: ["Data modeling", "Technical depth", "System architecture"],
-        evidence: "You're comfortable working with data structures, queries, and transformations.",
-      },
-      {
-        signals: ["User interface", "Presentation", "Usability"],
-        evidence: "You enjoy working with tools that help users see and interact with information.",
-      },
-      {
-        signals: ["Quality assurance", "Validation", "Systematic checking"],
-        evidence: "You value tools that help ensure accuracy and catch problems.",
-      },
-      {
-        signals: ["Process management", "Coordination", "Operational tools"],
-        evidence: "You're comfortable with tools that help manage workflows and access.",
-      },
-    ],
-  },
-  {
-    id: 8,
-    type: "likert",
-    prompt:
-      "I'm comfortable investigating issues in live systems under time pressure.",
+      "I'm comfortable shipping improvements even if everything isn't perfectly understood yet.",
     options: [
       "Strongly Disagree",
       "Disagree",
@@ -445,44 +290,89 @@ export const QUESTIONS: Question[] = [
     ],
     scoring: [
       { BE: 0, FE: 0, QA: 2, PM: 0 }, // SD → QA
-      { BE: 0, FE: 1, QA: 1, PM: 0 }, // D → QA / FE
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // D → QA
       { BE: 0, FE: 0, QA: 0, PM: 1 }, // N → PM
-      { BE: 1, FE: 0, QA: 0, PM: 0 }, // A → BE
-      { BE: 2, FE: 0, QA: 0, PM: 0 }, // SA → BE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // A → FE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SA → FE
     ],
     optionMetadata: [
       {
-        signals: ["Preference for stability", "Planned work", "Controlled environments"],
-        evidence: "You prefer working in controlled environments where issues can be addressed methodically.",
+        signals: ["Quality-first mindset", "Risk aversion", "Precision focus"],
+        evidence: "You prefer to fully understand everything before shipping.",
       },
       {
-        signals: ["Moderate pressure tolerance", "Preference for planning"],
-        evidence: "You can handle some pressure but prefer having time to think through problems carefully.",
+        signals: ["Quality awareness", "Cautious approach"],
+        evidence:
+          "You generally prefer understanding before shipping, but can be flexible.",
       },
       {
-        signals: ["Adaptable", "Balanced approach"],
-        evidence: "You can work under pressure when needed but don't actively seek high-stress situations.",
+        signals: ["Balanced perspective", "Context-dependent"],
+        evidence: "You balance speed and understanding based on the situation.",
       },
       {
-        signals: ["Problem-solving under pressure", "Technical troubleshooting", "Crisis management"],
-        evidence: "You stay calm and focused when production issues arise, using systematic debugging approaches.",
+        signals: ["Iteration preference", "Speed tolerance", "User feedback"],
+        evidence:
+          "You're comfortable shipping and learning from user feedback.",
       },
       {
-        signals: ["Thrives under pressure", "Rapid problem-solving", "Production expertise"],
-        evidence: "You excel at diagnosing and fixing issues quickly, even when the stakes are high and time is limited.",
+        signals: [
+          "Rapid iteration",
+          "Action-oriented",
+          "Learning through doing",
+        ],
+        evidence:
+          "You strongly prefer shipping quickly and iterating based on feedback.",
       },
     ],
   },
   {
-    id: 9,
-    type: "forced_choice",
-    prompt:
-      "What gives you the most satisfaction at work?",
+    id: 4,
+    type: "multiple_choice",
+    prompt: "Which activities energize you most? (Select up to 2)",
     options: [
-      "Solving a hard problem others couldn't",
-      "Seeing users quickly understand and adopt something",
-      "Knowing errors were prevented before they caused issues",
-      "Seeing a complex effort run smoothly end-to-end",
+      "Untangling complex logic",
+      "Making outputs intuitive",
+      "Catching subtle errors",
+      "Keeping work aligned and moving",
+    ],
+    scoring: [
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Untangling logic → BE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Making outputs intuitive → FE
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Catching errors → QA
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Keeping work aligned → PM
+    ],
+    optionMetadata: [
+      {
+        signals: ["Problem-solving", "Systematic thinking", "Technical depth"],
+        evidence:
+          "You find energy in solving complex logical puzzles and untangling systems.",
+      },
+      {
+        signals: ["User empathy", "Usability focus", "Presentation clarity"],
+        evidence:
+          "You're energized by making outputs clearer and more intuitive for users.",
+      },
+      {
+        signals: ["Quality assurance", "Attention to detail", "Precision"],
+        evidence:
+          "You find satisfaction in catching subtle errors others might miss.",
+      },
+      {
+        signals: ["Coordination", "Alignment", "Process management"],
+        evidence:
+          "You're energized by keeping work organized and moving forward smoothly.",
+      },
+    ],
+  },
+  {
+    id: 5,
+    type: "forced_choice",
+    prompt: "You're given vague requirements.",
+    options: [
+      "Ask what problem we're solving",
+      "Explore possible solutions quickly",
+      "Define acceptance criteria",
+      "Establish priorities and owners",
     ],
     scoring: [
       { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
@@ -492,60 +382,887 @@ export const QUESTIONS: Question[] = [
     ],
     optionMetadata: [
       {
-        signals: ["Technical excellence", "Problem-solving", "Intellectual challenge"],
-        evidence: "You find deep satisfaction in tackling difficult technical problems and finding solutions.",
+        signals: [
+          "Problem-solving",
+          "Root-cause thinking",
+          "Technical clarity",
+        ],
+        evidence:
+          "You focus on understanding the underlying problem before proposing solutions.",
+      },
+      {
+        signals: [
+          "Rapid iteration",
+          "Experimental approach",
+          "Solution exploration",
+        ],
+        evidence:
+          "You prefer to quickly explore possible solutions through experimentation.",
+      },
+      {
+        signals: [
+          "Quality assurance",
+          "Validation mindset",
+          "Acceptance criteria",
+        ],
+        evidence:
+          "You prioritize defining clear acceptance criteria and validation rules.",
+      },
+      {
+        signals: ["Coordination", "Prioritization", "Stakeholder management"],
+        evidence:
+          "You focus on establishing priorities and clarifying ownership.",
+      },
+    ],
+  },
+  {
+    id: 6,
+    type: "likert",
+    prompt: "I gain energy from direct interaction with end users.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 1, FE: 0, QA: 1, PM: 0 }, // SD → BE / QA
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // N → PM
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // A → FE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SA → FE
+    ],
+    optionMetadata: [
+      {
+        signals: [
+          "Technical focus",
+          "System-oriented",
+          "Preference for technical work",
+        ],
+        evidence:
+          "You prefer working with systems and data rather than direct user interaction.",
+      },
+      {
+        signals: ["Balanced perspective", "Moderate user awareness"],
+        evidence: "You have a balanced view on user interaction.",
+      },
+      {
+        signals: ["Stakeholder engagement", "Communication"],
+        evidence: "You're open to user interaction when needed.",
+      },
+      {
+        signals: ["User empathy", "User-centered thinking"],
+        evidence: "You value understanding user needs directly.",
+      },
+      {
+        signals: ["Strong user empathy", "User advocacy", "Customer focus"],
+        evidence:
+          "You gain significant energy from direct user interaction and feedback.",
+      },
+    ],
+  },
+  {
+    id: 7,
+    type: "multiple_choice",
+    prompt: "Which areas are you most comfortable navigating? (Select up to 2)",
+    options: [
+      "Data logic, calculations, models",
+      "Dashboards, layouts, visual clarity",
+      "Validation rules, consistency checks",
+      "Access control, workflows, releases",
+    ],
+    scoring: [
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Data logic → BE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Dashboards → FE
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Validation rules → QA
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Access control → PM
+    ],
+    optionMetadata: [
+      {
+        signals: ["Data modeling", "Technical depth", "System architecture"],
+        evidence:
+          "You're comfortable working with data structures, calculations, and models.",
+      },
+      {
+        signals: ["User interface", "Visual design", "Presentation"],
+        evidence:
+          "You enjoy working with dashboards, layouts, and visual clarity.",
+      },
+      {
+        signals: ["Quality assurance", "Validation", "Consistency"],
+        evidence: "You value validation rules and consistency checks.",
+      },
+      {
+        signals: ["Process management", "Coordination", "Operational tools"],
+        evidence:
+          "You're comfortable with access control, workflows, and release processes.",
+      },
+    ],
+  },
+  {
+    id: 8,
+    type: "likert",
+    prompt:
+      "When something breaks in production, I prefer to take ownership of diagnosing it.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // SD → PM
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // N → QA
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // SA → BE
+    ],
+    optionMetadata: [
+      {
+        signals: [
+          "Coordination preference",
+          "Delegation",
+          "Process management",
+        ],
+        evidence:
+          "You prefer coordinating others to diagnose issues rather than doing it yourself.",
+      },
+      {
+        signals: ["Balanced approach", "Context-dependent"],
+        evidence: "You have a balanced view on production issue ownership.",
+      },
+      {
+        signals: ["Quality awareness", "Systematic approach"],
+        evidence: "You're open to diagnosing issues when needed.",
+      },
+      {
+        signals: ["Technical ownership", "Problem-solving"],
+        evidence:
+          "You prefer taking ownership of diagnosing production issues.",
+      },
+      {
+        signals: [
+          "Strong technical ownership",
+          "Production expertise",
+          "Crisis management",
+        ],
+        evidence:
+          "You strongly prefer taking ownership of diagnosing production issues.",
+      },
+    ],
+  },
+  {
+    id: 9,
+    type: "forced_choice",
+    prompt: "What outcome feels best?",
+    options: [
+      "Root cause identified and fixed",
+      'Users immediately "get it"',
+      "No errors reach production",
+      "Everyone knows what's happening",
+    ],
+    scoring: [
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // B → FE
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // D → PM
+    ],
+    optionMetadata: [
+      {
+        signals: [
+          "Technical excellence",
+          "Root-cause thinking",
+          "Problem-solving",
+        ],
+        evidence:
+          "You find deep satisfaction in identifying and fixing root causes.",
       },
       {
         signals: ["User adoption", "Usability", "User empathy"],
-        evidence: "You're motivated by seeing users quickly understand and benefit from your work.",
+        evidence:
+          "You're motivated by seeing users immediately understand and benefit from your work.",
       },
       {
-        signals: ["Quality assurance", "Risk prevention", "Preventive thinking"],
-        evidence: "You take satisfaction in knowing you prevented problems before they could cause issues.",
+        signals: [
+          "Quality assurance",
+          "Risk prevention",
+          "Preventive thinking",
+        ],
+        evidence:
+          "You take satisfaction in preventing errors from reaching production.",
       },
       {
-        signals: ["Coordination", "Process excellence", "End-to-end success"],
-        evidence: "You find satisfaction in seeing complex projects come together smoothly and successfully.",
+        signals: ["Communication", "Transparency", "Coordination"],
+        evidence:
+          "You find satisfaction in ensuring everyone is informed and aligned.",
       },
     ],
   },
   {
     id: 10,
-    type: "multiple_choice",
-    prompt:
-      "What activities do you most enjoy day-to-day? (Select up to 2)",
+    type: "forced_choice",
+    prompt: "If something goes wrong, your biggest frustration is:",
     options: [
-      "Deep investigation and analysis",
-      "Refining layout, wording, or usability",
-      "Reviewing work for accuracy and consistency",
-      "Planning, coordinating, and communicating",
+      "The logic wasn't understood",
+      "Users were confused",
+      "It wasn't tested enough",
+      "Communication broke down",
     ],
     scoring: [
-      { BE: 1, FE: 0, QA: 0, PM: 0 }, // Deep investigation → BE
-      { BE: 0, FE: 1, QA: 0, PM: 0 }, // Refining layout → FE
-      { BE: 0, FE: 0, QA: 1, PM: 0 }, // Reviewing work → QA
-      { BE: 0, FE: 0, QA: 0, PM: 1 }, // Planning/coordinating → PM
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // B → FE
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // C → QA
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // D → PM
     ],
     optionMetadata: [
       {
-        signals: ["Analytical thinking", "Deep dive", "Problem-solving"],
-        evidence: "You enjoy digging deep into problems and understanding them thoroughly.",
+        signals: [
+          "Technical clarity",
+          "System understanding",
+          "Logic precision",
+        ],
+        evidence:
+          "You're frustrated when the underlying logic or system understanding is missing.",
       },
       {
-        signals: ["User experience", "Attention to detail", "Iterative improvement"],
-        evidence: "You find satisfaction in making outputs clearer, more usable, and better presented.",
+        signals: ["User empathy", "Usability focus", "User experience"],
+        evidence:
+          "You're frustrated when users are confused by the output or interface.",
       },
       {
-        signals: ["Quality assurance", "Attention to detail", "Systematic review"],
-        evidence: "You take pride in ensuring work is accurate and consistent.",
+        signals: [
+          "Quality assurance",
+          "Testing mindset",
+          "Preventive thinking",
+        ],
+        evidence:
+          "You're frustrated when proper testing wasn't done before release.",
       },
       {
-        signals: ["Coordination", "Communication", "Strategic planning"],
-        evidence: "You enjoy bringing people together and ensuring work flows smoothly.",
+        signals: ["Communication", "Coordination", "Stakeholder management"],
+        evidence:
+          "You're frustrated when communication breaks down and people aren't aligned.",
       },
     ],
   },
 ];
+
+// ============================================================================
+// BONUS QUESTION BANK
+// ============================================================================
+
+/**
+ * Bonus question bank for enhanced accuracy
+ *
+ * Usage:
+ * - Randomly select 2 questions per user, OR
+ * - Show when top two roles are within 2 points (tie-breaker)
+ *
+ * Scoring Rationale:
+ * - All bonus questions are Likert scale
+ * - +1 for moderate agreement/disagreement
+ * - +2 for strong agreement/disagreement (extremes)
+ * - Each question targets specific role signals
+ */
+export const BONUS_QUESTIONS: Question[] = [
+  {
+    id: 101,
+    type: "likert",
+    prompt:
+      "When investigating an issue, I prefer understanding the full system even if it takes longer.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 1, FE: 0, QA: 1, PM: 0 }, // N → BE / QA
+      { BE: 1, FE: 0, QA: 1, PM: 0 }, // A → BE / QA
+      { BE: 2, FE: 0, QA: 2, PM: 0 }, // SA → BE / QA
+    ],
+    optionMetadata: [
+      {
+        signals: ["Speed preference"],
+        evidence: "You prefer faster solutions over deep understanding.",
+      },
+      {
+        signals: ["Pragmatic approach"],
+        evidence: "You balance depth with speed.",
+      },
+      {
+        signals: ["System thinking", "Comprehensive analysis"],
+        evidence: "You value understanding full systems.",
+      },
+      {
+        signals: ["System thinking", "Comprehensive analysis"],
+        evidence: "You prefer understanding full systems.",
+      },
+      {
+        signals: ["Deep system thinking", "Comprehensive analysis"],
+        evidence:
+          "You strongly prefer understanding the full system before acting.",
+      },
+    ],
+  },
+  {
+    id: 102,
+    type: "likert",
+    prompt:
+      "I'm comfortable refining solutions based on feedback rather than getting it perfect upfront.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // N → FE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // A → FE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SA → FE
+    ],
+    optionMetadata: [
+      {
+        signals: ["Perfectionism"],
+        evidence: "You prefer getting things right the first time.",
+      },
+      {
+        signals: ["Quality focus"],
+        evidence: "You prefer some upfront quality.",
+      },
+      {
+        signals: ["Iteration preference"],
+        evidence: "You're comfortable refining based on feedback.",
+      },
+      {
+        signals: ["Iteration preference"],
+        evidence: "You prefer refining solutions based on feedback.",
+      },
+      {
+        signals: ["Strong iteration preference"],
+        evidence: "You strongly prefer iterating based on feedback.",
+      },
+    ],
+  },
+  {
+    id: 103,
+    type: "likert",
+    prompt: "I'd rather slow delivery than risk instability.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 1, PM: 1 }, // N → QA / PM
+      { BE: 0, FE: 0, QA: 1, PM: 1 }, // A → QA / PM
+      { BE: 0, FE: 0, QA: 2, PM: 2 }, // SA → QA / PM
+    ],
+    optionMetadata: [
+      {
+        signals: ["Speed preference"],
+        evidence: "You prefer faster delivery.",
+      },
+      {
+        signals: ["Balanced approach"],
+        evidence: "You balance speed and stability.",
+      },
+      {
+        signals: ["Stability focus"],
+        evidence: "You prefer stability over speed.",
+      },
+      {
+        signals: ["Stability focus"],
+        evidence: "You prioritize stability over speed.",
+      },
+      {
+        signals: ["Strong stability focus"],
+        evidence: "You strongly prioritize stability over speed.",
+      },
+    ],
+  },
+  {
+    id: 104,
+    type: "likert",
+    prompt: "I naturally step in to coordinate when things get messy.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // N → PM
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // A → PM
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // SA → PM
+    ],
+    optionMetadata: [
+      {
+        signals: ["Individual focus"],
+        evidence: "You prefer focusing on your own work.",
+      },
+      {
+        signals: ["Balanced approach"],
+        evidence: "You coordinate when needed.",
+      },
+      {
+        signals: ["Coordination"],
+        evidence: "You naturally coordinate when things get messy.",
+      },
+      {
+        signals: ["Coordination"],
+        evidence: "You step in to coordinate when needed.",
+      },
+      {
+        signals: ["Strong coordination"],
+        evidence: "You strongly prefer coordinating when things get messy.",
+      },
+    ],
+  },
+  {
+    id: 105,
+    type: "likert",
+    prompt: "I notice small inconsistencies others overlook.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // N → QA
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // A → QA
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // SA → QA
+    ],
+    optionMetadata: [
+      {
+        signals: ["Big picture focus"],
+        evidence: "You focus on larger patterns.",
+      },
+      {
+        signals: ["Balanced attention"],
+        evidence: "You notice details when needed.",
+      },
+      {
+        signals: ["Attention to detail"],
+        evidence: "You notice small inconsistencies.",
+      },
+      {
+        signals: ["Attention to detail"],
+        evidence: "You're good at spotting inconsistencies.",
+      },
+      {
+        signals: ["Strong attention to detail"],
+        evidence: "You strongly notice small inconsistencies others miss.",
+      },
+    ],
+  },
+  {
+    id: 106,
+    type: "likert",
+    prompt: "I learn new tools best by experimenting.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // N → FE
+      { BE: 0, FE: 1, QA: 0, PM: 0 }, // A → FE
+      { BE: 0, FE: 2, QA: 0, PM: 0 }, // SA → FE
+    ],
+    optionMetadata: [
+      {
+        signals: ["Structured learning"],
+        evidence: "You prefer structured learning approaches.",
+      },
+      {
+        signals: ["Balanced learning"],
+        evidence: "You use various learning methods.",
+      },
+      {
+        signals: ["Experimental learning"],
+        evidence: "You learn by experimenting.",
+      },
+      {
+        signals: ["Experimental learning"],
+        evidence: "You prefer learning through experimentation.",
+      },
+      {
+        signals: ["Strong experimental learning"],
+        evidence: "You strongly prefer learning by experimenting.",
+      },
+    ],
+  },
+  {
+    id: 107,
+    type: "likert",
+    prompt:
+      "I enjoy working with underlying structures more than surface presentation.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // N → BE
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // SA → BE
+    ],
+    optionMetadata: [
+      {
+        signals: ["Presentation focus"],
+        evidence: "You prefer working with surface presentation.",
+      },
+      {
+        signals: ["Balanced approach"],
+        evidence: "You work with both structures and presentation.",
+      },
+      {
+        signals: ["System thinking"],
+        evidence: "You enjoy underlying structures.",
+      },
+      {
+        signals: ["System thinking"],
+        evidence: "You prefer underlying structures.",
+      },
+      {
+        signals: ["Strong system thinking"],
+        evidence:
+          "You strongly prefer underlying structures over presentation.",
+      },
+    ],
+  },
+  {
+    id: 108,
+    type: "likert",
+    prompt: "Rolling out changes carefully matters more than speed.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 1, PM: 1 }, // N → QA / PM
+      { BE: 0, FE: 0, QA: 1, PM: 1 }, // A → QA / PM
+      { BE: 0, FE: 0, QA: 2, PM: 2 }, // SA → QA / PM
+    ],
+    optionMetadata: [
+      {
+        signals: ["Speed preference"],
+        evidence: "You prefer faster rollouts.",
+      },
+      {
+        signals: ["Balanced approach"],
+        evidence: "You balance speed and care.",
+      },
+      {
+        signals: ["Change management"],
+        evidence: "You prefer careful rollouts.",
+      },
+      {
+        signals: ["Change management"],
+        evidence: "You prioritize careful rollouts.",
+      },
+      {
+        signals: ["Strong change management"],
+        evidence: "You strongly prioritize careful rollouts over speed.",
+      },
+    ],
+  },
+  {
+    id: 109,
+    type: "likert",
+    prompt: "I enjoy explaining complex ideas simply.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 1, QA: 0, PM: 1 }, // N → FE / PM
+      { BE: 0, FE: 1, QA: 0, PM: 1 }, // A → FE / PM
+      { BE: 0, FE: 2, QA: 0, PM: 2 }, // SA → FE / PM
+    ],
+    optionMetadata: [
+      {
+        signals: ["Technical focus"],
+        evidence: "You prefer technical depth over simplification.",
+      },
+      {
+        signals: ["Balanced communication"],
+        evidence: "You communicate when needed.",
+      },
+      {
+        signals: ["Communication", "Clarity"],
+        evidence: "You enjoy explaining complex ideas simply.",
+      },
+      {
+        signals: ["Communication", "Clarity"],
+        evidence: "You value explaining complex ideas simply.",
+      },
+      {
+        signals: ["Strong communication", "Clarity"],
+        evidence: "You strongly enjoy explaining complex ideas simply.",
+      },
+    ],
+  },
+  {
+    id: 110,
+    type: "likert",
+    prompt: "I often ask 'what could break?'",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // N → QA
+      { BE: 0, FE: 0, QA: 1, PM: 0 }, // A → QA
+      { BE: 0, FE: 0, QA: 2, PM: 0 }, // SA → QA
+    ],
+    optionMetadata: [
+      {
+        signals: ["Optimistic approach"],
+        evidence: "You focus on what will work.",
+      },
+      {
+        signals: ["Balanced thinking"],
+        evidence: "You consider risks when needed.",
+      },
+      {
+        signals: ["Defensive thinking"],
+        evidence: "You often think about what could break.",
+      },
+      {
+        signals: ["Defensive thinking"],
+        evidence: "You regularly consider what could break.",
+      },
+      {
+        signals: ["Strong defensive thinking"],
+        evidence: "You strongly and frequently ask 'what could break?'",
+      },
+    ],
+  },
+  {
+    id: 111,
+    type: "likert",
+    prompt: "I look for ways to improve systems after they work.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // N → BE
+      { BE: 1, FE: 0, QA: 0, PM: 0 }, // A → BE
+      { BE: 2, FE: 0, QA: 0, PM: 0 }, // SA → BE
+    ],
+    optionMetadata: [
+      {
+        signals: ["Completion focus"],
+        evidence: "You prefer moving to new work after completion.",
+      },
+      {
+        signals: ["Balanced approach"],
+        evidence: "You improve systems when needed.",
+      },
+      {
+        signals: ["Optimization"],
+        evidence: "You look for ways to improve systems.",
+      },
+      {
+        signals: ["Optimization"],
+        evidence: "You actively seek system improvements.",
+      },
+      {
+        signals: ["Strong optimization"],
+        evidence: "You strongly and consistently look for system improvements.",
+      },
+    ],
+  },
+  {
+    id: 112,
+    type: "likert",
+    prompt: "I'm frustrated when people aren't on the same page.",
+    options: [
+      "Strongly Disagree",
+      "Disagree",
+      "Neutral",
+      "Agree",
+      "Strongly Agree",
+    ],
+    scoring: [
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // SD → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 0 }, // D → neutral
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // N → PM
+      { BE: 0, FE: 0, QA: 0, PM: 1 }, // A → PM
+      { BE: 0, FE: 0, QA: 0, PM: 2 }, // SA → PM
+    ],
+    optionMetadata: [
+      {
+        signals: ["Individual focus"],
+        evidence: "You're comfortable with people having different views.",
+      },
+      {
+        signals: ["Balanced approach"],
+        evidence: "You value alignment but aren't frustrated by differences.",
+      },
+      {
+        signals: ["Alignment focus"],
+        evidence: "You're frustrated when people aren't aligned.",
+      },
+      {
+        signals: ["Alignment focus"],
+        evidence: "You value having everyone on the same page.",
+      },
+      {
+        signals: ["Strong alignment focus"],
+        evidence: "You're strongly frustrated when people aren't aligned.",
+      },
+    ],
+  },
+];
+
+// ============================================================================
+// BONUS QUESTION SELECTION HELPERS
+// ============================================================================
+
+/**
+ * Selects bonus questions based on scoring results
+ *
+ * Strategy:
+ * - If top two roles are within 2 points: select 2-3 bonus questions that help differentiate between top roles
+ * - Otherwise: deterministically select 2 bonus questions (using seed if provided)
+ *
+ * Note: Scoring remains deterministic - same responses always produce same scores.
+ * Bonus question selection may vary per user, but we store which questions were shown
+ * so results can be reproduced.
+ *
+ * @param totals - Current role score totals (before bonus questions)
+ * @param seed - Optional seed for deterministic selection (e.g., user name). If not provided, uses first 2 questions.
+ * @returns Array of bonus question IDs to show
+ */
+export function selectBonusQuestions(
+  totals: RoleScores,
+  seed?: string,
+): number[] {
+  // Get top two roles
+  const sorted = Object.entries(totals)
+    .map(([roleId, score]) => ({ roleId: roleId as RoleId, score }))
+    .sort((a, b) => b.score - a.score);
+
+  const topScore = sorted[0].score;
+  const secondScore = sorted[1]?.score || 0;
+  const scoreDifference = topScore - secondScore;
+
+  // If top two roles are within 2 points, use tie-breaker strategy
+  if (scoreDifference <= 2) {
+    // Select 2-3 bonus questions that help distinguish between top roles
+    const topRoles = [sorted[0].roleId, sorted[1]?.roleId].filter(
+      Boolean,
+    ) as RoleId[];
+
+    // Find bonus questions that differentiate between these roles
+    const differentiatingQuestions = BONUS_QUESTIONS.filter((q) => {
+      // Check if this question gives different scores to the top roles
+      const hasDifferentiation = q.scoring.some((scoring) => {
+        const role1Score = scoring[topRoles[0]];
+        const role2Score = topRoles[1] ? scoring[topRoles[1]] : 0;
+        return Math.abs(role1Score - role2Score) > 0;
+      });
+      return hasDifferentiation;
+    });
+
+    // If we found differentiating questions, use them (up to 3)
+    if (differentiatingQuestions.length > 0) {
+      return differentiatingQuestions.slice(0, 3).map((q) => q.id);
+    }
+  }
+
+  // Otherwise, randomly select 2 bonus questions
+  // Use deterministic "random" based on seed if provided
+  const availableIds = BONUS_QUESTIONS.map((q) => q.id);
+  const selected: number[] = [];
+
+  // Simple deterministic selection based on seed or fallback to first 2
+  if (seed) {
+    // Use seed to deterministically select (simple hash-based approach)
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash << 5) - hash + seed.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    const index1 = Math.abs(hash) % availableIds.length;
+    const index2 = Math.abs(hash * 31) % availableIds.length;
+    selected.push(availableIds[index1]);
+    if (index2 !== index1) {
+      selected.push(availableIds[index2]);
+    } else {
+      selected.push(availableIds[(index2 + 1) % availableIds.length]);
+    }
+  } else {
+    // Default: select first 2 (deterministic fallback)
+    selected.push(...availableIds.slice(0, 2));
+  }
+
+  return selected;
+}
+
+/**
+ * Get all questions (core + selected bonus) for a quiz session
+ *
+ * @param bonusQuestionIds - IDs of bonus questions to include
+ * @returns Combined array of core and bonus questions
+ */
+export function getQuestionsForSession(bonusQuestionIds: number[]): Question[] {
+  const bonusQuestions = BONUS_QUESTIONS.filter((q) =>
+    bonusQuestionIds.includes(q.id),
+  );
+  return [...QUESTIONS, ...bonusQuestions];
+}
 
 // ============================================================================
 // SCORING FUNCTION
@@ -553,11 +1270,11 @@ export const QUESTIONS: Question[] = [
 
 /**
  * Pure function to score quiz responses and calculate role fit
- * 
+ *
  * This function is deterministic, has no side effects, and is fully testable.
  * It processes all responses, calculates scores per role, ranks them, handles ties,
  * and generates a narrative summary.
- * 
+ *
  * @param responses - Object mapping question IDs to user responses
  * @returns ScoringResult with totals, rankings, primary role, tie status, and narrative
  */
@@ -594,7 +1311,7 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
   // Track evidence highlights from strong-signal answers (+2 or +3)
   const evidenceHighlights: EvidenceHighlight[] = [];
 
-  // Process each question response
+  // Process core questions (IDs 1-10)
   for (const question of QUESTIONS) {
     const response = responses[question.id];
 
@@ -620,7 +1337,7 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
         const scoring = question.scoring[optionIndex];
         const metadata = question.optionMetadata[optionIndex];
         selectedOptionText = question.options[optionIndex];
-        
+
         // Add scores to totals
         totals.BE += scoring.BE;
         totals.FE += scoring.FE;
@@ -680,7 +1397,7 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
             const scoring = question.scoring[optionIndex];
             const metadata = question.optionMetadata[optionIndex];
             selectedOptions.push(question.options[optionIndex]);
-            
+
             // Add scores to totals
             totals.BE += scoring.BE;
             totals.FE += scoring.FE;
@@ -728,6 +1445,53 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     }
   }
 
+  // Process bonus questions (IDs >= 100)
+  // Bonus questions are included in responses if they were shown to the user
+  // They contribute to scoring but don't affect the core question count
+  for (const bonusQuestion of BONUS_QUESTIONS) {
+    const response = responses[bonusQuestion.id];
+
+    // Skip if no response provided for this bonus question
+    if (response === undefined || response === null) {
+      continue;
+    }
+
+    // Bonus questions are always Likert scale (single value response)
+    if (bonusQuestion.type === "likert") {
+      const optionIndex = response as number;
+      if (
+        optionIndex >= 0 &&
+        optionIndex < bonusQuestion.scoring.length &&
+        optionIndex < bonusQuestion.optionMetadata.length
+      ) {
+        const scoring = bonusQuestion.scoring[optionIndex];
+        const metadata = bonusQuestion.optionMetadata[optionIndex];
+
+        // Add scores to totals
+        totals.BE += scoring.BE;
+        totals.FE += scoring.FE;
+        totals.QA += scoring.QA;
+        totals.PM += scoring.PM;
+
+        // Accumulate skill tags
+        for (const signal of metadata.signals) {
+          allSkillTags.add(signal);
+          skillTagFrequency[signal] = (skillTagFrequency[signal] || 0) + 1;
+        }
+
+        // Track strong signals (+2) from bonus questions
+        const roleScores = [scoring.BE, scoring.FE, scoring.QA, scoring.PM];
+        const maxScore = Math.max(...roleScores);
+        if (maxScore === 2) {
+          if (scoring.BE === 2) strongSignalCounts.BE++;
+          if (scoring.FE === 2) strongSignalCounts.FE++;
+          if (scoring.QA === 2) strongSignalCounts.QA++;
+          if (scoring.PM === 2) strongSignalCounts.PM++;
+        }
+      }
+    }
+  }
+
   // Create ranked roles array with tie-breaking
   const roleEntries: Array<[RoleId, number]> = Object.entries(totals) as Array<
     [RoleId, number]
@@ -757,7 +1521,7 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
       const prevScore = roleEntries[index - 1][1];
       const prevStrongSignals = strongSignalCounts[roleEntries[index - 1][0]];
       const currStrongSignals = strongSignalCounts[roleId];
-      
+
       // Same rank if score AND strong-signal count are equal
       if (prevScore === score && prevStrongSignals === currStrongSignals) {
         rank = ranked[index - 1].rank;
@@ -774,13 +1538,13 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
   // Determine primary role and handle ties
   const highestScore = ranked[0].score;
   const highestStrongSignals = strongSignalCounts[ranked[0].roleId];
-  
+
   // Find all roles tied for first place (same score AND same strong-signal count)
   const tiedRoles = ranked.filter(
     (r) =>
       r.score === highestScore &&
       r.rank === 1 &&
-      strongSignalCounts[r.roleId] === highestStrongSignals
+      strongSignalCounts[r.roleId] === highestStrongSignals,
   );
 
   const tieDetected = tiedRoles.length > 1;
@@ -794,7 +1558,7 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
   } else if (tieDetected) {
     // Multiple ties: use first two alphabetically
     const sortedTied = [...tiedRoles].sort((a, b) =>
-      a.roleId.localeCompare(b.roleId)
+      a.roleId.localeCompare(b.roleId),
     );
     primaryRole = `${sortedTied[0].roleId} + ${sortedTied[1].roleId}`;
     secondaryRole = sortedTied[1].roleId;
@@ -812,7 +1576,7 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     secondaryRole,
     tieDetected,
     questionContributions,
-    responses
+    responses,
   );
 
   // Sort evidence highlights by score (descending) and take top 3-5
@@ -826,6 +1590,28 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     tagFrequency: skillTagFrequency,
   };
 
+  // Calculate dominance score (difference between top and second place)
+  // This indicates how clear the primary role assignment is
+  const dominanceScore =
+    ranked.length >= 2 ? ranked[0].score - ranked[1].score : ranked[0].score;
+
+  // Calculate confidence band based on dominance score and tie status
+  // Scoring rationale:
+  // - Strong: Clear winner with high dominance (≥6 points) - very confident assignment
+  // - Clear: Clear winner with moderate dominance (3-5 points) - confident assignment
+  // - Split: Close scores (≤2 points) - indicates hybrid strengths or unclear preference
+  // - Hybrid: Tied roles - balanced profile across multiple roles
+  let confidenceBand: ConfidenceBand;
+  if (tieDetected) {
+    confidenceBand = "Hybrid";
+  } else if (dominanceScore >= 6) {
+    confidenceBand = "Strong";
+  } else if (dominanceScore >= 3) {
+    confidenceBand = "Clear";
+  } else {
+    confidenceBand = "Split";
+  }
+
   return {
     totals,
     ranked,
@@ -835,12 +1621,14 @@ export function scoreResponses(responses: QuizResponses): ScoringResult {
     narrative,
     skillProfile,
     evidenceHighlights: sortedEvidence,
+    dominanceScore,
+    confidenceBand,
   };
 }
 
 /**
  * Helper function to generate a narrative summary of the scoring results
- * 
+ *
  * @param totals - Role score totals
  * @param ranked - Ranked roles array
  * @param primaryRole - The primary role (can be single role or "Role1 + Role2" format)
@@ -862,7 +1650,7 @@ function generateNarrative(
     score: number;
     optionText: string;
   }>,
-  responses: QuizResponses
+  responses: QuizResponses,
 ): string {
   // Determine primary and secondary role info
   let primaryRoleInfo: Role;
@@ -905,9 +1693,10 @@ function generateNarrative(
   }
 
   // Find top 2 highest-scoring questions for the primary role(s)
-  const primaryRoleIds: RoleId[] = typeof primaryRole === "string" && primaryRole.includes(" + ")
-    ? (primaryRole.split(" + ") as RoleId[])
-    : [primaryRole as RoleId];
+  const primaryRoleIds: RoleId[] =
+    typeof primaryRole === "string" && primaryRole.includes(" + ")
+      ? (primaryRole.split(" + ") as RoleId[])
+      : [primaryRole as RoleId];
 
   // Filter contributions for primary role(s) and sort by score
   const relevantContributions = questionContributions

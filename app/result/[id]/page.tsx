@@ -40,6 +40,9 @@ interface QuizSubmission {
     }>;
     primaryRecommendations?: string[];
     secondaryRecommendations?: string[];
+    dominanceScore?: number;
+    confidenceBand?: "Strong" | "Clear" | "Split" | "Hybrid";
+    bonusQuestionsShown?: number[];
   };
   timestamp: string;
 }
@@ -100,6 +103,9 @@ export default function ResultPage() {
             evidenceHighlights: data.scoring.evidenceHighlights,
             primaryRecommendations: data.scoring.primaryRecommendations,
             secondaryRecommendations: data.scoring.secondaryRecommendations,
+            dominanceScore: data.scoring.dominanceScore,
+            confidenceBand: data.scoring.confidenceBand,
+            bonusQuestionsShown: data.scoring.bonusQuestionsShown,
           },
           timestamp: data.timestamp,
         };
@@ -356,6 +362,21 @@ export default function ResultPage() {
                   {result.scoring.totals[roleInfo.primary.id]} pts
                 </span>
               </div>
+
+              {/* Confidence Band */}
+              {result.scoring.confidenceBand && (
+                <div className="mb-3">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 print:bg-indigo-50 print:border print:border-indigo-200">
+                    Confidence: {result.scoring.confidenceBand}
+                    {result.scoring.dominanceScore !== undefined && (
+                      <span className="ml-2 text-indigo-600">
+                        ({result.scoring.dominanceScore} pt difference)
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
+
               <p className="text-sm text-gray-700 print:text-xs">{summary}</p>
             </div>
 

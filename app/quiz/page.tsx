@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { QUESTIONS, type QuizResponses, type Question } from "@/src/lib/quiz";
+import {
+  QUESTIONS,
+  BONUS_QUESTIONS,
+  selectBonusQuestions,
+  scoreResponses,
+  type QuizResponses,
+  type Question,
+} from "@/src/lib/quiz";
 
 // Quiz flow states
 type QuizState = "code" | "welcome" | "quiz" | "submitting";
@@ -20,8 +27,13 @@ export default function QuizPage() {
   const [team, setTeam] = useState("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<QuizResponses>({});
-  const [selectedResponse, setSelectedResponse] = useState<number | number[] | null>(null);
+  const [selectedResponse, setSelectedResponse] = useState<
+    number | number[] | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allQuestions, setAllQuestions] = useState<Question[]>(QUESTIONS);
+  const [bonusQuestionIds, setBonusQuestionIds] = useState<number[]>([]);
+  const [showBonusQuestions, setShowBonusQuestions] = useState(false);
 
   // Check for stored access code on mount
   useEffect(() => {
@@ -59,9 +71,12 @@ export default function QuizPage() {
     }
   };
 
-  // Get current question
-  const currentQuestion = QUESTIONS[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / QUESTIONS.length) * 100;
+  // Get current question from allQuestions (core + bonus)
+  const currentQuestion = allQuestions[currentQuestionIndex];
+  const progress =
+    allQuestions.length > 0
+      ? ((currentQuestionIndex + 1) / allQuestions.length) * 100
+      : 0;
 
   // Handle welcome form submission
   const handleStartQuiz = () => {
@@ -87,8 +102,38 @@ export default function QuizPage() {
     };
     setResponses(newResponses);
 
-    // Check if this is the last question
-    if (currentQuestionIndex < QUESTIONS.length - 1) {
+    // Check if we just finished the core questions (10 questions)
+    if (currentQuestionIndex === QUESTIONS.length - 1 && !showBonusQuestions) {
+      // Calculate preliminary scores to determine if we need bonus questions
+      const preliminaryScores = scoreResponses(newResponses);
+      const topScore = preliminaryScores.ranked[0].score;
+      const secondScore = preliminaryScores.ranked[1]?.score || 0;
+      const scoreDifference = topScore - secondScore;
+
+      // Select bonus questions: use tie-breaker if within 2 points, otherwise random
+      const selectedBonusIds = selectBonusQuestions(
+        preliminaryScores.totals,
+        name || undefined, // Use name as seed for deterministic selection
+      );
+      setBonusQuestionIds(selectedBonusIds);
+
+      // Always show 2 bonus questions (per requirements: "Randomly select 2 bonus questions per user OR ask when within 2 points")
+      // Since we're selecting based on tie-breaker logic, we'll show them
+      if (selectedBonusIds.length > 0) {
+        // Append bonus questions to core questions
+        const bonusQuestionsToShow = BONUS_QUESTIONS.filter((q) =>
+          selectedBonusIds.includes(q.id),
+        );
+        setAllQuestions([...QUESTIONS, ...bonusQuestionsToShow]);
+        setShowBonusQuestions(true);
+        setCurrentQuestionIndex(QUESTIONS.length); // Start at first bonus question
+        setSelectedResponse(null);
+        return;
+      }
+    }
+
+    // Check if this is the last question overall
+    if (currentQuestionIndex < allQuestions.length - 1) {
       // Move to next question
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedResponse(null);
@@ -117,6 +162,7 @@ export default function QuizPage() {
           name: name.trim() || null,
           team: team.trim() || null,
           accessCode: accessCode,
+          bonusQuestionsShown: bonusQuestionIds, // Store which bonus questions were shown
         }),
       });
 
@@ -134,10 +180,10 @@ export default function QuizPage() {
       }
 
       const data = await response.json();
-      
+
       // Store in localStorage for admin page (temporary solution)
       const existingResults = JSON.parse(
-        localStorage.getItem("quizResults") || "[]"
+        localStorage.getItem("quizResults") || "[]",
       );
       existingResults.push(data.submission);
       localStorage.setItem("quizResults", JSON.stringify(existingResults));
@@ -228,8 +274,9 @@ export default function QuizPage() {
               Discover Your Role Fit
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 text-center">
-              Take a few moments to reflect on your preferences and interests. 
-              This will help identify which role aligns best with your strengths.
+              Take a few moments to reflect on your preferences and interests.
+              This will help identify which role aligns best with your
+              strengths.
             </p>
 
             <div className="space-y-4 mb-8">
@@ -309,13 +356,13 @@ export default function QuizPage() {
       // Forced choice: show all options as buttons (typically 2-4 options)
       // If exactly 2 options, label them A/B
       const isTwoOptions = question.options.length === 2;
-      
+
       return (
         <div className="space-y-3">
           {question.options.map((option, index) => {
             const isSelected = selectedResponse === index;
             const label = isTwoOptions ? (index === 0 ? "A" : "B") : null;
-            
+
             return (
               <button
                 key={index}
@@ -345,21 +392,27 @@ export default function QuizPage() {
 
     if (question.type === "multiple_choice") {
       // Multiple choice: show options as checkable buttons
-      const selectedIndices = Array.isArray(selectedResponse) ? selectedResponse : [];
-      
+      const selectedIndices = Array.isArray(selectedResponse)
+        ? selectedResponse
+        : [];
+
       return (
         <div className="space-y-3">
           {question.options.map((option, index) => {
             const isSelected = selectedIndices.includes(index);
-            
+
             return (
               <button
                 key={index}
                 onClick={() => {
                   if (isSelected) {
                     // Deselect
-                    const newSelection = selectedIndices.filter((i) => i !== index);
-                    handleAnswerSelect(newSelection.length > 0 ? newSelection : []);
+                    const newSelection = selectedIndices.filter(
+                      (i) => i !== index,
+                    );
+                    handleAnswerSelect(
+                      newSelection.length > 0 ? newSelection : [],
+                    );
                   } else {
                     // Select (but limit to 2)
                     if (selectedIndices.length < 2) {
@@ -373,8 +426,8 @@ export default function QuizPage() {
                   isSelected
                     ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 shadow-md"
                     : !isSelected && selectedIndices.length >= 2
-                    ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50 opacity-50 cursor-not-allowed"
-                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50 opacity-50 cursor-not-allowed"
+                      : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -412,15 +465,22 @@ export default function QuizPage() {
 
     if (question.type === "likert") {
       // Likert scale: 5 options in a horizontal row (mobile: stack, desktop: row)
-      const selectedIndex = typeof selectedResponse === "number" ? selectedResponse : null;
-      const labels = ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"];
-      
+      const selectedIndex =
+        typeof selectedResponse === "number" ? selectedResponse : null;
+      const labels = [
+        "Strongly Disagree",
+        "Disagree",
+        "Neutral",
+        "Agree",
+        "Strongly Agree",
+      ];
+
       return (
         <div className="space-y-4">
           <div className="grid grid-cols-5 gap-2 md:gap-4">
             {question.options.map((option, index) => {
               const isSelected = selectedIndex === index;
-              
+
               return (
                 <button
                   key={index}
@@ -483,7 +543,7 @@ export default function QuizPage() {
         <div className="mb-6 md:mb-8">
           <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
             <span className="font-medium">
-              Question {currentQuestionIndex + 1} of {QUESTIONS.length}
+              Question {currentQuestionIndex + 1} of {allQuestions.length}
             </span>
             <span>{Math.round(progress)}%</span>
           </div>
@@ -510,9 +570,7 @@ export default function QuizPage() {
           )}
 
           {/* Answer options */}
-          <div className="mb-8 md:mb-10">
-            {renderQuestion(currentQuestion)}
-          </div>
+          <div className="mb-8 md:mb-10">{renderQuestion(currentQuestion)}</div>
 
           {/* Navigation buttons */}
           <div className="flex gap-4">
@@ -537,7 +595,9 @@ export default function QuizPage() {
                   : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
               }`}
             >
-              {currentQuestionIndex < QUESTIONS.length - 1 ? "Continue →" : "Complete Reflection"}
+              {currentQuestionIndex < allQuestions.length - 1
+                ? "Continue →"
+                : "Complete Reflection"}
             </button>
           </div>
         </div>

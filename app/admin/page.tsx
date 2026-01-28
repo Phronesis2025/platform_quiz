@@ -4,6 +4,10 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ROLES, type RoleId } from "@/src/lib/quiz";
+import {
+  getRolePlaybookByString,
+  getRolePlaybook,
+} from "@/src/lib/rolePlaybooks";
 
 // Type definition for submission
 interface Submission {
@@ -31,6 +35,9 @@ interface Submission {
   primaryRecommendations?: string[];
   secondaryRecommendations?: string[];
   summaryText?: string;
+  dominanceScore?: number;
+  confidenceBand?: "Strong" | "Clear" | "Split" | "Hybrid";
+  bonusQuestionsShown?: number[];
 }
 
 export default function AdminPage() {
@@ -98,10 +105,16 @@ export default function AdminPage() {
       .slice(0, 3);
   };
 
-  // Calculate aggregate role counts and team insights
+  // Calculate aggregate role counts and confidence bands
   const roleCounts = useMemo(() => {
     const primaryCounts: Record<string, number> = {};
     const secondaryCounts: Record<string, number> = {};
+    const confidenceBandCounts: Record<string, number> = {
+      Strong: 0,
+      Clear: 0,
+      Split: 0,
+      Hybrid: 0,
+    };
 
     filteredSubmissions.forEach((sub) => {
       // Count primary roles (handle "Role1 + Role2" format)
@@ -119,10 +132,122 @@ export default function AdminPage() {
         secondaryCounts[sub.secondaryRole] =
           (secondaryCounts[sub.secondaryRole] || 0) + 1;
       }
+
+      // Count confidence bands
+      if (sub.confidenceBand) {
+        confidenceBandCounts[sub.confidenceBand] =
+          (confidenceBandCounts[sub.confidenceBand] || 0) + 1;
+      }
     });
 
-    return { primaryCounts, secondaryCounts };
+    return { primaryCounts, secondaryCounts, confidenceBandCounts };
   }, [filteredSubmissions]);
+
+  // Generate risk & coverage insights automatically
+  const riskInsights = useMemo(() => {
+    const insights: string[] = [];
+    const totalPeople = filteredSubmissions.length;
+
+    if (totalPeople === 0) return insights;
+
+    // Check for role concentration risks
+    const roleEntries = Object.entries(roleCounts.primaryCounts);
+    const sortedRoles = roleEntries.sort((a, b) => b[1] - a[1]);
+
+    // Risk: QA concentration
+    const qaCount = roleCounts.primaryCounts["QA"] || 0;
+    if (qaCount <= 2 && qaCount > 0) {
+      insights.push(
+        `QA-style thinking is concentrated in ${qaCount} individual${qaCount === 1 ? "" : "s"} → elevated release risk`
+      );
+    }
+
+    // Risk: Backend + PM overlap (burnout risk)
+    const beWithPmSecondary = filteredSubmissions.filter(
+      (sub) =>
+        (sub.primaryRole === "BE" || sub.primaryRole.includes("BE")) &&
+        sub.secondaryRole === "PM"
+    ).length;
+    if (beWithPmSecondary > 0) {
+      insights.push(
+        `Most Backend-aligned individuals also show secondary PM traits → good for ownership, but watch burnout`
+      );
+    }
+
+    // Risk: FE as secondary only
+    const fePrimary = roleCounts.primaryCounts["FE"] || 0;
+    const feSecondary = roleCounts.secondaryCounts["FE"] || 0;
+    if (fePrimary === 0 && feSecondary > 0) {
+      insights.push(
+        `FE alignment is present but often secondary → usability may be underrepresented`
+      );
+    }
+
+    // Risk: Missing role coverage
+    const allRoles = ["BE", "FE", "QA", "PM"] as RoleId[];
+    const missingRoles = allRoles.filter(
+      (role) => (roleCounts.primaryCounts[role] || 0) === 0
+    );
+    if (missingRoles.length > 0) {
+      const roleLabels = missingRoles.map((r) => ROLES[r].label).join(", ");
+      insights.push(
+        `No primary ${roleLabels} alignment detected → consider coverage gaps`
+      );
+    }
+
+    // Risk: Low confidence assignments
+    const lowConfidence =
+      (roleCounts.confidenceBandCounts["Split"] || 0) +
+      (roleCounts.confidenceBandCounts["Hybrid"] || 0);
+    if (lowConfidence > totalPeople * 0.3) {
+      insights.push(
+        `${lowConfidence} individuals show Split/Hybrid confidence → consider additional context for role assignments`
+      );
+    }
+
+    return insights.slice(0, 4); // Return top 4 insights
+  }, [filteredSubmissions, roleCounts]);
+
+  // Generate leadership translation
+  const leadershipTranslation = useMemo(() => {
+    if (filteredSubmissions.length === 0) return "";
+
+    const sortedRoles = Object.entries(roleCounts.primaryCounts).sort(
+      (a, b) => b[1] - a[1]
+    );
+    const topRole = sortedRoles[0];
+    const secondRole = sortedRoles[1];
+    const thirdRole = sortedRoles[2];
+
+    const topLabel = topRole
+      ? ROLES[topRole[0] as RoleId]?.label || topRole[0]
+      : "";
+    const secondLabel = secondRole
+      ? ROLES[secondRole[0] as RoleId]?.label || secondRole[0]
+      : "";
+    const thirdLabel = thirdRole
+      ? ROLES[thirdRole[0] as RoleId]?.label || thirdRole[0]
+      : "";
+
+    const topCount = topRole?.[1] || 0;
+    const secondCount = secondRole?.[1] || 0;
+    const thirdCount = thirdRole?.[1] || 0;
+
+    let depth = "strong";
+    if (topCount <= 2) depth = "limited";
+    else if (topCount <= filteredSubmissions.length * 0.4) depth = "moderate";
+
+    let coverage = "moderate";
+    if (secondCount === 0) coverage = "limited";
+    else if (secondCount >= filteredSubmissions.length * 0.3)
+      coverage = "strong";
+
+    let redundancy = "good";
+    if (topCount === 1 && secondCount === 0) redundancy = "limited";
+    else if (topCount <= 2 && secondCount <= 1) redundancy = "moderate";
+
+    return `The team shows ${depth} depth in ${topLabel}, ${coverage} coverage in ${secondLabel || "secondary roles"}, and ${redundancy} redundancy${redundancy === "limited" ? " → consider cross-training" : ""}.`;
+  }, [filteredSubmissions, roleCounts]);
 
   // Team composition analysis
   const teamComposition = useMemo(() => {
@@ -308,16 +433,13 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Page header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* SECTION 1 — Executive Framing */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 md:p-8 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                Team Role Fit Dashboard
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Team Role Alignment – Operational Support Context
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Staffing insights and team composition analysis
-              </p>
             </div>
             <div className="flex gap-2">
               {filteredSubmissions.length > 0 && (
@@ -339,241 +461,136 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Contextual guidance */}
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 rounded">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                How to Use This Dashboard
-              </h3>
-              <ul className="text-xs text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">
-                <li>
-                  <strong>Team Composition:</strong> Review role distribution
-                  across teams to identify gaps or over-concentration
-                </li>
-                <li>
-                  <strong>Role Distribution:</strong> Understand overall team
-                  balance and where you might need to hire or develop skills
-                </li>
-                <li>
-                  <strong>Individual Details:</strong> Click &quot;Details&quot; on any
-                  person to see their full role fit profile and recommendations
-                </li>
-                <li>
-                  <strong>Export:</strong> Download data as CSV for further
-                  analysis in spreadsheets or reporting tools
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                About Role Fit
-              </h3>
-              <p className="text-xs text-gray-700 dark:text-gray-300 mb-2">
-                These role assignments are based on quiz responses and indicate
-                natural preferences and strengths. They are guidance for team
-                composition and project planning,{" "}
-                <strong>not performance evaluations</strong>.
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                <strong>Roles:</strong> {ROLES.BE.label} (BE) • {ROLES.FE.label}{" "}
-                (FE) • {ROLES.QA.label} (QA) • {ROLES.PM.label} (PM)
-              </p>
-            </div>
+          {/* Non-negotiable context paragraph */}
+          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
+            <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
+              <strong>Context:</strong> This tool identifies how individuals naturally approach problem-solving, risk, and delivery under pressure.
+              It is not a performance evaluation and does not override job titles.
+              Results are intended to reduce operational risk by aligning responsibilities with demonstrated thinking patterns.
+            </p>
           </div>
         </div>
 
-        {/* Key Metrics Dashboard */}
-        {filteredSubmissions.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Key Metrics
-              </h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                Quick overview of your team data
-              </span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                  Total People
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {filteredSubmissions.length}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Total quiz submissions
-                </div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                  Teams
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {
-                    new Set(
-                      filteredSubmissions.map((s) => s.team).filter(Boolean),
-                    ).size
-                  }
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Unique teams represented
-                </div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                  Most Common Role
-                </div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                  {(() => {
-                    const mostCommon = Object.entries(
-                      roleCounts.primaryCounts,
-                    ).sort((a, b) => b[1] - a[1])[0];
-                    return mostCommon
-                      ? ROLES[mostCommon[0] as RoleId]?.label || mostCommon[0]
-                      : "—";
-                  })()}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Primary role with most people
-                </div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                  Avg Score Spread
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {Math.round(
-                    filteredSubmissions.reduce(
-                      (sum, s) => sum + s.scoreSpread,
-                      0,
-                    ) / filteredSubmissions.length,
-                  )}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Difference between highest and lowest role scores (higher =
-                  more specialized)
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Team Composition Overview */}
-        {filteredSubmissions.length > 0 &&
-          Object.keys(teamComposition).length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Team Composition
-                </h2>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                  See how roles are distributed across teams. This helps
-                  identify teams that may need more balance or specific skill
-                  sets.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(teamComposition)
-                  .sort((a, b) => b[1].totalMembers - a[1].totalMembers)
-                  .slice(0, 6)
-                  .map(([teamName, team]) => (
-                    <div
-                      key={teamName}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
-                          {teamName}
-                        </h3>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {team.totalMembers}{" "}
-                          {team.totalMembers === 1 ? "person" : "people"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(["BE", "FE", "QA", "PM"] as RoleId[]).map(
-                          (roleId) => {
-                            const count = team.roleBreakdown[roleId] || 0;
-                            return (
-                              <div
-                                key={roleId}
-                                className="flex items-center justify-between text-xs"
-                              >
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  {ROLES[roleId].label}
-                                </span>
-                                <span className="font-medium text-gray-900 dark:text-white">
-                                  {count}
-                                </span>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-        {/* Role Distribution - Compact */}
+        {/* SECTION 2 — Team-Level Snapshot (aggregate only, no names) */}
         {filteredSubmissions.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Role Distribution
-              </h2>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                Overall distribution of primary roles across all people. Use
-                this to understand if your organization has balanced coverage or
-                if certain roles are over/under-represented.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
-                const count = roleCounts.primaryCounts[roleId] || 0;
-                const percentage =
-                  filteredSubmissions.length > 0
-                    ? Math.round((count / filteredSubmissions.length) * 100)
-                    : 0;
-                const maxCount = Math.max(
-                  ...Object.values(roleCounts.primaryCounts),
-                  1,
-                );
-                const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Team-Level Snapshot
+            </h2>
 
-                return (
-                  <div
-                    key={roleId}
-                    className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                        {ROLES[roleId].label}
-                      </span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">
-                        {count}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 mb-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {/* Primary Role Distribution */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Primary Role Distribution
+                </h3>
+                <div className="space-y-2">
+                  {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
+                    const count = roleCounts.primaryCounts[roleId] || 0;
+                    return (
                       <div
-                        className="bg-blue-600 h-1.5 rounded-full"
-                        style={{ width: `${barWidth}%` }}
-                      ></div>
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {percentage}%
-                    </div>
-                  </div>
-                );
-              })}
+                        key={roleId}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {ROLES[roleId].label}
+                        </span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Secondary Role Distribution */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Secondary Role Distribution
+                </h3>
+                <div className="space-y-2">
+                  {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
+                    const count = roleCounts.secondaryCounts[roleId] || 0;
+                    return (
+                      <div
+                        key={roleId}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {ROLES[roleId].label}
+                        </span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Confidence Bands Breakdown */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Confidence Bands Breakdown
+                </h3>
+                <div className="space-y-2">
+                  {(["Strong", "Clear", "Split", "Hybrid"] as const).map(
+                    (band) => {
+                      const count =
+                        roleCounts.confidenceBandCounts[band] || 0;
+                      return (
+                        <div
+                          key={band}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-gray-700 dark:text-gray-300">
+                            {band}
+                          </span>
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {count}
+                          </span>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Leadership Translation */}
+            {leadershipTranslation && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 rounded mt-4">
+                <p className="text-sm text-gray-900 dark:text-white italic">
+                  {leadershipTranslation}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SECTION 3 — Risk & Coverage Insights */}
+        {filteredSubmissions.length > 0 && riskInsights.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Risk & Coverage Insights
+            </h2>
+            <div className="space-y-3">
+              {riskInsights.map((insight, index) => (
+                <div
+                  key={index}
+                  className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded"
+                >
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {insight}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Results table */}
+        {/* SECTION 4 — Individual Results Table */}
         {filteredSubmissions.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
             <p className="text-gray-600 dark:text-gray-400">
@@ -594,34 +611,35 @@ export default function AdminPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
             <div className="p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                All Submissions
+                Individual Results
               </h2>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Complete list of all quiz submissions. Click &quot;Details&quot; to see
-                full role fit profile, skill tags, evidence highlights, and
-                recommendations for each person.
+                Click &quot;View Details&quot; to see full role fit profile and recommendations.
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                      Date
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Name
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                      Team
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Primary Role
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                      Roles
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Secondary Role
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                      Top Skills
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Confidence Band
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Dominance Score
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Top 3 Skill Signals
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Actions
                     </th>
                   </tr>
@@ -632,9 +650,6 @@ export default function AdminPage() {
                       key={submission.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
-                        {new Date(submission.createdAt).toLocaleDateString()}
-                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {submission.name || (
                           <span className="text-gray-400 italic text-xs">
@@ -642,23 +657,36 @@ export default function AdminPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
-                        {submission.team || (
-                          <span className="text-gray-400 italic">—</span>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          {formatRoleLabel(submission.primaryRole)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {submission.secondaryRole ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                            {ROLES[submission.secondaryRole as RoleId]
+                              ?.label || submission.secondaryRole}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <div className="flex flex-wrap gap-1.5">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            {formatRoleLabel(submission.primaryRole)}
+                        {submission.confidenceBand ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                            {submission.confidenceBand}
                           </span>
-                          {submission.secondaryRole && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                              {ROLES[submission.secondaryRole as RoleId]
-                                ?.label || submission.secondaryRole}
-                            </span>
-                          )}
-                        </div>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {submission.dominanceScore !== undefined ? (
+                          <span className="font-medium">{submission.dominanceScore} pts</span>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {getTopSkillTags(submission).length > 0 ? (
@@ -683,58 +711,13 @@ export default function AdminPage() {
                           onClick={() => setSelectedSubmission(submission)}
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                         >
-                          Details
+                          View Details
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-
-            {/* Additional context */}
-            <div className="p-6 pt-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Understanding the Data
-              </h3>
-              <div className="grid md:grid-cols-2 gap-4 text-xs text-gray-600 dark:text-gray-400">
-                <div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Primary Role:
-                  </p>
-                  <p>
-                    The role with the highest total score based on quiz answers.
-                    This represents the person&apos;s strongest natural fit.
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Secondary Role:
-                  </p>
-                  <p>
-                    The role with the second-highest score. People often have
-                    strengths in multiple areas.
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Top Skills:
-                  </p>
-                  <p>
-                    Skill tags extracted from their answers that indicate their
-                    strongest signals and preferences.
-                  </p>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Score Spread:
-                  </p>
-                  <p>
-                    The difference between highest and lowest role scores.
-                    Higher spread = more specialized, lower = more balanced.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -822,20 +805,20 @@ export default function AdminPage() {
                   </div>
                   <div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                      Date
+                      Confidence Band
                     </div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {new Date(
-                        selectedSubmission.createdAt,
-                      ).toLocaleDateString()}
+                      {selectedSubmission.confidenceBand || "—"}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                      Score Spread
+                      Dominance Score
                     </div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {selectedSubmission.scoreSpread} pts
+                      {selectedSubmission.dominanceScore !== undefined
+                        ? `${selectedSubmission.dominanceScore} pts`
+                        : "—"}
                     </div>
                   </div>
                 </div>
@@ -902,12 +885,12 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Top Skills */}
+                {/* Skill Evidence */}
                 {selectedSubmission.skillProfile &&
                   getTopSkillTags(selectedSubmission).length > 0 && (
                     <div>
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                        Top Skills
+                        Skill Evidence
                       </h3>
                       <div className="flex flex-wrap gap-1.5">
                         {getTopSkillTags(selectedSubmission).map((tag, idx) => (
@@ -922,12 +905,12 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                {/* Recommendations */}
+                {/* Best Used For */}
                 {(selectedSubmission.primaryRecommendations ||
                   selectedSubmission.secondaryRecommendations) && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      Best Use Cases
+                      Best Used For
                     </h3>
                     <ul className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
                       {selectedSubmission.primaryRecommendations
@@ -954,6 +937,60 @@ export default function AdminPage() {
                   </div>
                 )}
 
+                {/* Watch-outs (Risk Conditions) */}
+                {(() => {
+                  const primaryPlaybook = getRolePlaybookByString(
+                    selectedSubmission.primaryRole
+                  );
+                  return (
+                    primaryPlaybook &&
+                    primaryPlaybook.watchOutFor.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                          Risk Conditions to Monitor
+                        </h3>
+                        <ul className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                          {primaryPlaybook.watchOutFor.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="text-amber-600 dark:text-amber-400 mt-0.5">
+                                •
+                              </span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  );
+                })()}
+
+                {/* How to Support */}
+                {(() => {
+                  const primaryPlaybook = getRolePlaybookByString(
+                    selectedSubmission.primaryRole
+                  );
+                  return (
+                    primaryPlaybook &&
+                    primaryPlaybook.howToSupportYou.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                          How to Support
+                        </h3>
+                        <ul className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                          {primaryPlaybook.howToSupportYou.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="text-green-600 dark:text-green-400 mt-0.5">
+                                •
+                              </span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  );
+                })()}
+
                 {/* Actions */}
                 <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Link
@@ -971,6 +1008,16 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* SECTION 6 — Explicit Guardrails Footer */}
+        {filteredSubmissions.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mt-6 border-t-4 border-red-500">
+            <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
+              <strong>Guardrails:</strong> These results should be used to guide task assignment and risk mitigation, not to limit growth, promotion, or learning opportunities.
+              Individuals may intentionally stretch beyond their primary fit with appropriate support.
+            </p>
           </div>
         )}
       </div>

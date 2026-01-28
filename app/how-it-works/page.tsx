@@ -103,13 +103,13 @@ export default function HowItWorksPage() {
                       question
                     </li>
                     <li>
-                      These are considered &quot;strong signals&quot; because they clearly
-                      indicate a role preference
+                      These are considered &quot;strong signals&quot; because
+                      they clearly indicate a role preference
                     </li>
                   </ul>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 italic">
-                    Example: &quot;What concerns you most?&quot; → Each answer option maps
-                    to one role and gives it +2 points.
+                    Example: &quot;What concerns you most?&quot; → Each answer
+                    option maps to one role and gives it +2 points.
                   </p>
                 </div>
 
@@ -133,12 +133,14 @@ export default function HowItWorksPage() {
                       receive points
                     </li>
                     <li>
-                      These provide &quot;moderate signals&quot; about your preferences
+                      These provide &quot;moderate signals&quot; about your
+                      preferences
                     </li>
                   </ul>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 italic">
-                    Example: &quot;Which tasks do you find most engaging? (Select up
-                    to 2)&quot; → Each selected option gives +1 point to its role.
+                    Example: &quot;Which tasks do you find most engaging?
+                    (Select up to 2)&quot; → Each selected option gives +1 point
+                    to its role.
                   </p>
                 </div>
 
@@ -167,12 +169,48 @@ export default function HowItWorksPage() {
                     <li>Some positions may award points to multiple roles</li>
                   </ul>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 italic">
-                    Example: &quot;I prefer to slow down briefly to reduce future
-                    rework&quot; → Strongly Agree might give +2 to QA, while Strongly
-                    Disagree gives +2 to FE.
+                    Example: &quot;I prefer to slow down briefly to reduce
+                    future rework&quot; → Strongly Agree might give +2 to QA,
+                    while Strongly Disagree gives +2 to FE.
                   </p>
                 </div>
               </div>
+            </section>
+
+            {/* Bonus Questions */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                Bonus Questions for Enhanced Accuracy
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                The quiz includes a bank of 12 additional Likert-scale questions
+                that may be shown to improve accuracy:
+              </p>
+              <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 p-4 mb-4 rounded">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  When Bonus Questions Appear
+                </h3>
+                <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                  <li>
+                    <strong>Tie-Breaker Mode:</strong> If your top two roles are
+                    within 2 points after the core questions, you&apos;ll see
+                    2-3 bonus questions specifically chosen to help
+                    differentiate between those roles.
+                  </li>
+                  <li>
+                    <strong>Random Selection:</strong> If your scores are more
+                    clearly separated, you&apos;ll see 2 randomly selected bonus
+                    questions from the bank (this selection is deterministic
+                    based on your name, so results are reproducible).
+                  </li>
+                </ul>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300">
+                Bonus questions are all Likert-scale and scored the same way as
+                regular Likert questions (+1 for moderate positions, +2 for
+                strong positions). They contribute to your final scores just
+                like the core questions.
+              </p>
             </section>
 
             {/* Score Calculation */}
@@ -183,13 +221,14 @@ export default function HowItWorksPage() {
               <ol className="list-decimal list-inside space-y-3 text-gray-700 dark:text-gray-300">
                 <li>
                   <strong>Points accumulate:</strong> As you answer each
-                  question, points are added to each role&apos;s total score based on
-                  your selections.
+                  question, points are added to each role&apos;s total score
+                  based on your selections.
                 </li>
                 <li>
                   <strong>All questions count:</strong> Every question
-                  contributes to your final scores. There are 10 questions
-                  total.
+                  contributes to your final scores. You&apos;ll answer 10 core
+                  questions, plus up to 3 bonus questions (if shown), for a
+                  total of 10-13 questions.
                 </li>
                 <li>
                   <strong>Role totals:</strong> After all questions, each role
@@ -198,6 +237,19 @@ export default function HowItWorksPage() {
                 <li>
                   <strong>Ranking:</strong> Roles are ranked from highest to
                   lowest total score.
+                </li>
+                <li>
+                  <strong>Dominance Score:</strong> The difference between your
+                  top role&apos;s score and your second role&apos;s score. A
+                  higher dominance score indicates a clearer primary role fit.
+                </li>
+                <li>
+                  <strong>Confidence Band:</strong> Based on your dominance
+                  score and whether roles are tied, you&apos;re assigned a
+                  confidence level: <strong>Strong</strong> (≥6 point
+                  difference), <strong>Clear</strong> (3-5 point difference),{" "}
+                  <strong>Split</strong> (≤2 point difference), or{" "}
+                  <strong>Hybrid</strong> (tied roles).
                 </li>
               </ol>
             </section>
@@ -223,9 +275,9 @@ export default function HowItWorksPage() {
                     roles have the same total score, move to step 2.
                   </li>
                   <li>
-                    <strong>Second:</strong> Count &quot;strong signals&quot; (+2 point
-                    answers). The role with more strong signals wins. If still
-                    tied, move to step 3.
+                    <strong>Second:</strong> Count &quot;strong signals&quot;
+                    (+2 point answers). The role with more strong signals wins.
+                    If still tied, move to step 3.
                   </li>
                   <li>
                     <strong>Third:</strong> If scores and strong signals are
@@ -235,7 +287,7 @@ export default function HowItWorksPage() {
                 </ol>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 mb-4">
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                     Single Primary Role
@@ -255,10 +307,42 @@ export default function HowItWorksPage() {
                   <p className="text-gray-700 dark:text-gray-300">
                     If two roles are tied for first place (same score AND same
                     number of strong signals), both are shown as your primary
-                    role (e.g., &quot;BE + FE&quot;). This indicates you have balanced
-                    strengths across both roles.
+                    role (e.g., &quot;BE + FE&quot;). This indicates you have
+                    balanced strengths across both roles and results in a{" "}
+                    <strong>Hybrid</strong> confidence band.
                   </p>
                 </div>
+              </div>
+
+              {/* Confidence Bands */}
+              <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-4 rounded">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  Understanding Confidence Bands
+                </h3>
+                <p className="text-gray-700 dark:text-gray-300 mb-2">
+                  Your results include a confidence band that indicates how
+                  clear your role assignment is:
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                  <li>
+                    <strong>Strong:</strong> Your top role leads by 6+ points.
+                    This indicates a very clear, confident role fit.
+                  </li>
+                  <li>
+                    <strong>Clear:</strong> Your top role leads by 3-5 points.
+                    This indicates a confident role assignment.
+                  </li>
+                  <li>
+                    <strong>Split:</strong> Your top role leads by 2 points or
+                    less. This suggests you have balanced strengths across
+                    multiple roles.
+                  </li>
+                  <li>
+                    <strong>Hybrid:</strong> Two or more roles are tied for
+                    first place. This indicates a balanced profile with
+                    strengths across multiple roles.
+                  </li>
+                </ul>
               </div>
             </section>
 
@@ -273,9 +357,9 @@ export default function HowItWorksPage() {
               <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
                 <li>
                   <strong>Skill Tags:</strong> Each answer option has associated
-                  skill tags (like &quot;Root-cause thinking&quot;, &quot;User empathy&quot;, etc.).
-                  These are collected and shown as your &quot;Strongest Signals&quot; on
-                  your results page.
+                  skill tags (like &quot;Root-cause thinking&quot;, &quot;User
+                  empathy&quot;, etc.). These are collected and shown as your
+                  &quot;Strongest Signals&quot; on your results page.
                 </li>
                 <li>
                   <strong>Evidence Highlights:</strong> Answers that gave +2
@@ -292,7 +376,7 @@ export default function HowItWorksPage() {
               </h2>
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
                 <p className="text-gray-700 dark:text-gray-300 mb-4">
-                  Let&apos;s say you answer 10 questions:
+                  Let&apos;s say you answer 10 core questions:
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 mb-4">
                   <li>
@@ -306,18 +390,30 @@ export default function HowItWorksPage() {
                   <li>2 likert questions where you give +2 to QA</li>
                 </ul>
                 <p className="text-gray-700 dark:text-gray-300 mb-2">
-                  Your totals would be:
+                  After core questions, your totals would be:
                 </p>
-                <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
+                <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4 mb-4">
                   <li>BE: 10 points (5 × 2)</li>
                   <li>FE: 3 points (3 × 1)</li>
                   <li>QA: 4 points (2 × 2)</li>
                   <li>PM: 0 points</li>
                 </ul>
+                <p className="text-gray-700 dark:text-gray-300 mb-2">
+                  Since BE (10) and QA (4) are more than 2 points apart, you
+                  might see 2 bonus questions (randomly selected). Let&apos;s
+                  say you answer them and get +1 to BE and +1 to QA:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4 mb-4">
+                  <li>BE: 11 points (10 + 1)</li>
+                  <li>FE: 3 points</li>
+                  <li>QA: 5 points (4 + 1)</li>
+                  <li>PM: 0 points</li>
+                </ul>
                 <p className="text-gray-700 dark:text-gray-300 mt-4">
                   Result: <strong>BE (Backend Engineer)</strong> is your primary
-                  role with 10 points, and <strong>QA</strong> is your secondary
-                  role with 4 points.
+                  role with 11 points, and <strong>QA</strong> is your secondary
+                  role with 5 points. Your dominance score is 6 (11 - 5), which
+                  gives you a <strong>Strong</strong> confidence band.
                 </p>
               </div>
             </section>
