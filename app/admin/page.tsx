@@ -37,8 +37,6 @@ export default function AdminPage() {
   const router = useRouter();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [teamFilter, setTeamFilter] = useState<string>("");
-  const [roleFilter, setRoleFilter] = useState<string>("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [selectedSubmission, setSelectedSubmission] =
     useState<Submission | null>(null);
@@ -69,44 +67,8 @@ export default function AdminPage() {
     fetchSubmissions();
   }, []);
 
-  // Get unique teams and roles for filter dropdowns
-  const uniqueTeams = useMemo(() => {
-    const teams = new Set<string>();
-    submissions.forEach((sub) => {
-      if (sub.team) teams.add(sub.team);
-    });
-    return Array.from(teams).sort();
-  }, [submissions]);
-
-  const uniqueRoles = useMemo(() => {
-    const roles = new Set<string>();
-    submissions.forEach((sub) => {
-      if (sub.primaryRole) {
-        // Handle "Role1 + Role2" format
-        if (sub.primaryRole.includes(" + ")) {
-          sub.primaryRole.split(" + ").forEach((role) => roles.add(role));
-        } else {
-          roles.add(sub.primaryRole);
-        }
-      }
-    });
-    return Array.from(roles).sort();
-  }, [submissions]);
-
-  // Filter submissions
-  const filteredSubmissions = useMemo(() => {
-    return submissions.filter((sub) => {
-      if (teamFilter && sub.team !== teamFilter) return false;
-      if (roleFilter) {
-        // Check if primary role matches (handles "Role1 + Role2" format)
-        const primaryRoles = sub.primaryRole.includes(" + ")
-          ? sub.primaryRole.split(" + ")
-          : [sub.primaryRole];
-        if (!primaryRoles.includes(roleFilter)) return false;
-      }
-      return true;
-    });
-  }, [submissions, teamFilter, roleFilter]);
+  // Use all submissions (no filtering)
+  const filteredSubmissions = submissions;
 
   // Format role label for display
   const formatRoleLabel = (roleString: string): string => {
@@ -349,7 +311,7 @@ export default function AdminPage() {
         {/* Page header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                 Team Role Fit Dashboard
               </h1>
@@ -376,125 +338,142 @@ export default function AdminPage() {
               )}
             </div>
           </div>
+
+          {/* Contextual guidance */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 rounded">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                How to Use This Dashboard
+              </h3>
+              <ul className="text-xs text-gray-700 dark:text-gray-300 space-y-1 list-disc list-inside">
+                <li>
+                  <strong>Team Composition:</strong> Review role distribution
+                  across teams to identify gaps or over-concentration
+                </li>
+                <li>
+                  <strong>Role Distribution:</strong> Understand overall team
+                  balance and where you might need to hire or develop skills
+                </li>
+                <li>
+                  <strong>Individual Details:</strong> Click "Details" on any
+                  person to see their full role fit profile and recommendations
+                </li>
+                <li>
+                  <strong>Export:</strong> Download data as CSV for further
+                  analysis in spreadsheets or reporting tools
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                About Role Fit
+              </h3>
+              <p className="text-xs text-gray-700 dark:text-gray-300 mb-2">
+                These role assignments are based on quiz responses and indicate
+                natural preferences and strengths. They are guidance for team
+                composition and project planning,{" "}
+                <strong>not performance evaluations</strong>.
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                <strong>Roles:</strong> {ROLES.BE.label} (BE) • {ROLES.FE.label}{" "}
+                (FE) • {ROLES.QA.label} (QA) • {ROLES.PM.label} (PM)
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Key Metrics Dashboard */}
         {filteredSubmissions.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                Total People
-              </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {filteredSubmissions.length}
-              </div>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Key Metrics
+              </h2>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Quick overview of your team data
+              </span>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                Teams
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  Total People
+                </div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                  {filteredSubmissions.length}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Total quiz submissions
+                </div>
               </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {
-                  new Set(
-                    filteredSubmissions.map((s) => s.team).filter(Boolean),
-                  ).size
-                }
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  Teams
+                </div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                  {
+                    new Set(
+                      filteredSubmissions.map((s) => s.team).filter(Boolean),
+                    ).size
+                  }
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Unique teams represented
+                </div>
               </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                Most Common Role
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  Most Common Role
+                </div>
+                <div className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                  {(() => {
+                    const mostCommon = Object.entries(
+                      roleCounts.primaryCounts,
+                    ).sort((a, b) => b[1] - a[1])[0];
+                    return mostCommon
+                      ? ROLES[mostCommon[0] as RoleId]?.label || mostCommon[0]
+                      : "—";
+                  })()}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Primary role with most people
+                </div>
               </div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">
-                {(() => {
-                  const mostCommon = Object.entries(
-                    roleCounts.primaryCounts,
-                  ).sort((a, b) => b[1] - a[1])[0];
-                  return mostCommon
-                    ? ROLES[mostCommon[0] as RoleId]?.label || mostCommon[0]
-                    : "—";
-                })()}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                Avg Score Spread
-              </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {Math.round(
-                  filteredSubmissions.reduce(
-                    (sum, s) => sum + s.scoreSpread,
-                    0,
-                  ) / filteredSubmissions.length,
-                )}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  Avg Score Spread
+                </div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                  {Math.round(
+                    filteredSubmissions.reduce(
+                      (sum, s) => sum + s.scoreSpread,
+                      0,
+                    ) / filteredSubmissions.length,
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Difference between highest and lowest role scores (higher =
+                  more specialized)
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Team
-              </label>
-              <select
-                value={teamFilter}
-                onChange={(e) => setTeamFilter(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Teams</option>
-                {uniqueTeams.map((team) => (
-                  <option key={team} value={team}>
-                    {team}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Primary Role
-              </label>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Roles</option>
-                {uniqueRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {ROLES[role as RoleId]?.label || role}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {(teamFilter || roleFilter) && (
-              <button
-                onClick={() => {
-                  setTeamFilter("");
-                  setRoleFilter("");
-                }}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          {(teamFilter || roleFilter) && (
-            <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
-              Showing {filteredSubmissions.length} of {submissions.length}
-            </div>
-          )}
-        </div>
-
         {/* Team Composition Overview */}
         {filteredSubmissions.length > 0 &&
           Object.keys(teamComposition).length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Team Composition
-              </h2>
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Team Composition
+                </h2>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  See how roles are distributed across teams. This helps
+                  identify teams that may need more balance or specific skill
+                  sets.
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(teamComposition)
                   .sort((a, b) => b[1].totalMembers - a[1].totalMembers)
@@ -542,9 +521,16 @@ export default function AdminPage() {
         {/* Role Distribution - Compact */}
         {filteredSubmissions.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Role Distribution
-            </h2>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Role Distribution
+              </h2>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                Overall distribution of primary roles across all people. Use
+                this to understand if your organization has balanced coverage or
+                if certain roles are over/under-represented.
+              </p>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
                 const count = roleCounts.primaryCounts[roleId] || 0;
@@ -606,6 +592,16 @@ export default function AdminPage() {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <div className="p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                All Submissions
+              </h2>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Complete list of all quiz submissions. Click "Details" to see
+                full role fit profile, skill tags, evidence highlights, and
+                recommendations for each person.
+              </p>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -694,6 +690,51 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Additional context */}
+            <div className="p-6 pt-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                Understanding the Data
+              </h3>
+              <div className="grid md:grid-cols-2 gap-4 text-xs text-gray-600 dark:text-gray-400">
+                <div>
+                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Primary Role:
+                  </p>
+                  <p>
+                    The role with the highest total score based on quiz answers.
+                    This represents the person's strongest natural fit.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Secondary Role:
+                  </p>
+                  <p>
+                    The role with the second-highest score. People often have
+                    strengths in multiple areas.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Top Skills:
+                  </p>
+                  <p>
+                    Skill tags extracted from their answers that indicate their
+                    strongest signals and preferences.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Score Spread:
+                  </p>
+                  <p>
+                    The difference between highest and lowest role scores.
+                    Higher spread = more specialized, lower = more balanced.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
