@@ -27,7 +27,7 @@ export default function HowItWorksPage() {
                 href="/quiz"
                 className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm font-medium"
               >
-                Take Quiz
+                Start Assessment
               </Link>
             </nav>
           </div>
@@ -48,7 +48,7 @@ export default function HowItWorksPage() {
                 Why This Tool Exists
               </h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                This quiz helps identify how individuals naturally approach
+                This assessment helps identify how individuals naturally approach
                 problem-solving, risk, and delivery under pressure. It&apos;s
                 designed to reduce operational risk by aligning responsibilities
                 with demonstrated thinking patterns.
@@ -60,32 +60,32 @@ export default function HowItWorksPage() {
               </p>
             </section>
 
-            {/* Taking the Quiz */}
+            {/* Taking the Assessment */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                What Happens When You Take the Quiz
+                What Happens When You Complete the Assessment
               </h2>
               <ul className="list-disc list-inside space-y-3 text-gray-700 dark:text-gray-300">
                 <li>
-                  <strong>Time commitment:</strong> You&apos;ll answer 10-13
+                  <strong>Time commitment:</strong> You&apos;ll reflect on 10-13
                   questions (typically 10 core questions, plus up to 3 bonus
                   questions if needed for accuracy). This takes approximately
                   5-10 minutes.
                 </li>
                 <li>
-                  <strong>What it measures:</strong> The quiz identifies your
+                  <strong>What it measures:</strong> The assessment identifies your
                   natural thinking patterns, preferences, and risk mindset when
                   approaching technical problems and operational challenges.
                 </li>
                 <li>
                   <strong>Question types:</strong> You&apos;ll see different
-                  question formats—some ask you to pick one option, others let
+                  reflection formats—some ask you to pick one option, others let
                   you select multiple options, and some ask you to rate your
                   agreement on a scale.
                 </li>
                 <li>
                   <strong>What you&apos;ll see:</strong> After completing the
-                  quiz, you&apos;ll receive results showing:
+                  assessment, you&apos;ll receive results showing:
                   <ul className="list-disc list-inside ml-6 mt-2 space-y-1">
                     <li>Your ranked role fit (all four roles with scores)</li>
                     <li>Primary and secondary role assignments</li>
@@ -220,8 +220,8 @@ export default function HowItWorksPage() {
                     How long does it take?
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Most people complete the quiz in 5-10 minutes. You&apos;ll
-                    answer 10 core questions, and possibly 2-3 bonus questions
+                    Most people complete the assessment in 5-10 minutes. You&apos;ll
+                    reflect on 10 core questions, and possibly 2-3 bonus questions
                     if needed for accuracy.
                   </p>
                 </div>
@@ -243,8 +243,8 @@ export default function HowItWorksPage() {
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300">
                     Yes. Your thinking patterns and preferences can evolve as
-                    you gain experience and develop new skills. You can retake
-                    the quiz at any time to see how your role fit may have
+                    you gain experience and develop new skills. You can complete
+                    the assessment again at any time to see how your role fit may have
                     changed. Results are a snapshot of your current approach,
                     not a permanent label.
                   </p>
@@ -266,13 +266,13 @@ export default function HowItWorksPage() {
               </p>
             </section>
 
-            {/* Back to Quiz */}
+            {/* Back to Assessment */}
             <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
               <Link
                 href="/quiz"
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200"
               >
-                Take the Quiz →
+                Start Assessment →
               </Link>
             </div>
           </div>

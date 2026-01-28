@@ -595,7 +595,7 @@ export default function AdminPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
             <p className="text-gray-600 dark:text-gray-400">
               {submissions.length === 0
-                ? "No submissions yet. Take a quiz to see results here!"
+                ? "No assessments completed yet. Complete an assessment to see results here."
                 : "No submissions match your filters."}
             </p>
             {submissions.length === 0 && (
@@ -603,7 +603,7 @@ export default function AdminPage() {
                 href="/quiz"
                 className="inline-block mt-4 text-blue-600 dark:text-blue-400 hover:underline"
               >
-                Go to Quiz →
+                Start Assessment →
               </Link>
             )}
           </div>

@@ -20,7 +20,7 @@ export default function Home() {
                 href="/quiz"
                 className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm font-medium"
               >
-                Take Quiz
+                Start Assessment
               </Link>
               <Link
                 href="/how-it-works"
@@ -43,15 +43,19 @@ export default function Home() {
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="max-w-3xl mx-auto px-6 py-12 text-center">
           {/* Main heading */}
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
+          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
             Role Alignment Assessment
           </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+            Understanding how you naturally approach problems, risk, and delivery
+          </p>
 
           {/* Description paragraph */}
           <p className="text-xl text-gray-700 dark:text-gray-300 mb-8 leading-relaxed">
-            Welcome to our interactive quiz platform! Test your knowledge,
-            challenge yourself, and see how well you understand various topics.
-            Our quiz system is designed to be engaging, educational, and fun.
+            This assessment helps identify how individuals naturally approach
+            problem-solving, risk, and delivery under pressure. It&apos;s designed
+            to reduce operational risk by aligning responsibilities with demonstrated
+            thinking patterns.
           </p>
 
           {/* Features list */}
@@ -62,15 +66,15 @@ export default function Home() {
             <ul className="space-y-3 text-gray-700 dark:text-gray-300">
               <li className="flex items-start">
                 <span className="text-blue-600 dark:text-blue-400 mr-2">✓</span>
-                <span>Take quizzes on various topics</span>
+                <span>Complete a reflection on your problem-solving approach</span>
               </li>
               <li className="flex items-start">
                 <span className="text-blue-600 dark:text-blue-400 mr-2">✓</span>
-                <span>View your results and track your progress</span>
+                <span>View your role alignment results and insights</span>
               </li>
               <li className="flex items-start">
                 <span className="text-blue-600 dark:text-blue-400 mr-2">✓</span>
-                <span>Review your submission history</span>
+                <span>Understand how your thinking patterns align with team needs</span>
               </li>
             </ul>
           </div>
@@ -81,7 +85,7 @@ export default function Home() {
               href="/quiz"
               className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
             >
-              Start Quiz
+              Start Assessment
             </Link>
             <Link
               href="/how-it-works"
@@ -93,7 +97,7 @@ export default function Home() {
 
           {/* Additional link text */}
           <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
-            Want to understand how scores are calculated?{" "}
+            Want to understand how the assessment works?{" "}
             <Link
               href="/how-it-works"
               className="text-blue-600 dark:text-blue-400 hover:underline font-medium"

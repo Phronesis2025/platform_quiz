@@ -324,7 +324,7 @@ export default function ResultPage() {
               href="/quiz"
               className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
             >
-              Take Another Reflection
+              Start New Assessment
             </Link>
           </div>
         </div>
@@ -334,8 +334,11 @@ export default function ResultPage() {
           {/* Header */}
           <div className="text-center mb-6 print:mb-4">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 print:text-3xl">
-              Your Role Fit Profile
+              Role Alignment Assessment
             </h1>
+            <p className="text-lg text-gray-600 mb-2 print:text-base">
+              Understanding how you naturally approach problems, risk, and delivery
+            </p>
             {result.name && (
               <p className="text-lg text-gray-600 print:text-base">
                 {result.name}
