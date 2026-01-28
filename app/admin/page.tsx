@@ -40,7 +40,8 @@ export default function AdminPage() {
   const [teamFilter, setTeamFilter] = useState<string>("");
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [selectedSubmission, setSelectedSubmission] =
+    useState<Submission | null>(null);
   const [isClearingData, setIsClearingData] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -49,7 +50,7 @@ export default function AdminPage() {
     const fetchSubmissions = async () => {
       try {
         const response = await fetch("/api/submissions");
-        
+
         if (!response.ok) {
           throw new Error("Failed to fetch submissions");
         }
@@ -135,7 +136,7 @@ export default function AdminPage() {
       .slice(0, 3);
   };
 
-  // Calculate aggregate role counts
+  // Calculate aggregate role counts and team insights
   const roleCounts = useMemo(() => {
     const primaryCounts: Record<string, number> = {};
     const secondaryCounts: Record<string, number> = {};
@@ -147,16 +148,54 @@ export default function AdminPage() {
           primaryCounts[role] = (primaryCounts[role] || 0) + 1;
         });
       } else {
-        primaryCounts[sub.primaryRole] = (primaryCounts[sub.primaryRole] || 0) + 1;
+        primaryCounts[sub.primaryRole] =
+          (primaryCounts[sub.primaryRole] || 0) + 1;
       }
 
       // Count secondary roles
       if (sub.secondaryRole) {
-        secondaryCounts[sub.secondaryRole] = (secondaryCounts[sub.secondaryRole] || 0) + 1;
+        secondaryCounts[sub.secondaryRole] =
+          (secondaryCounts[sub.secondaryRole] || 0) + 1;
       }
     });
 
     return { primaryCounts, secondaryCounts };
+  }, [filteredSubmissions]);
+
+  // Team composition analysis
+  const teamComposition = useMemo(() => {
+    const teams: Record<
+      string,
+      {
+        members: Submission[];
+        roleBreakdown: Record<string, number>;
+        totalMembers: number;
+      }
+    > = {};
+
+    filteredSubmissions.forEach((sub) => {
+      const team = sub.team || "Unassigned";
+      if (!teams[team]) {
+        teams[team] = {
+          members: [],
+          roleBreakdown: {},
+          totalMembers: 0,
+        };
+      }
+      teams[team].members.push(sub);
+      teams[team].totalMembers++;
+
+      // Count roles per team
+      const primaryRoles = sub.primaryRole.includes(" + ")
+        ? sub.primaryRole.split(" + ")
+        : [sub.primaryRole];
+      primaryRoles.forEach((role) => {
+        teams[team].roleBreakdown[role] =
+          (teams[team].roleBreakdown[role] || 0) + 1;
+      });
+    });
+
+    return teams;
   }, [filteredSubmissions]);
 
   // Handle logout
@@ -240,7 +279,9 @@ export default function AdminPage() {
         sub.name || "",
         sub.team || "",
         formatRoleLabel(sub.primaryRole),
-        sub.secondaryRole ? ROLES[sub.secondaryRole as RoleId]?.label || sub.secondaryRole : "",
+        sub.secondaryRole
+          ? ROLES[sub.secondaryRole as RoleId]?.label || sub.secondaryRole
+          : "",
         rankedRoles[0] || "",
         rankedRoles[1] || "",
         rankedRoles[2] || "",
@@ -265,7 +306,10 @@ export default function AdminPage() {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `role-fit-submissions-${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `role-fit-submissions-${new Date().toISOString().split("T")[0]}.csv`,
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -275,7 +319,9 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-gray-600 dark:text-gray-400">Loading submissions...</div>
+        <div className="text-gray-600 dark:text-gray-400">
+          Loading submissions...
+        </div>
       </div>
     );
   }
@@ -301,58 +347,102 @@ export default function AdminPage() {
         </div>
 
         {/* Page header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 md:p-8 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                Role Fit Overview
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                Team Role Fit Dashboard
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Explore team role fit patterns to help with staffing and team composition decisions.
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Staffing insights and team composition analysis
               </p>
-              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <strong>Note:</strong> This is guidance, not a performance evaluation. 
-                  Use these insights to understand team strengths and plan development opportunities.
-                </p>
-              </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {filteredSubmissions.length > 0 && (
                 <button
                   onClick={exportToCSV}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
                 >
-                  Export to CSV
+                  Export CSV
                 </button>
               )}
               {submissions.length > 0 && (
                 <button
                   onClick={() => setShowClearConfirm(true)}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
                 >
-                  Clear All Data
+                  Clear Data
                 </button>
               )}
             </div>
           </div>
         </div>
 
+        {/* Key Metrics Dashboard */}
+        {filteredSubmissions.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                Total People
+              </div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                {filteredSubmissions.length}
+              </div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                Teams
+              </div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                {
+                  new Set(
+                    filteredSubmissions.map((s) => s.team).filter(Boolean),
+                  ).size
+                }
+              </div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                Most Common Role
+              </div>
+              <div className="text-lg font-bold text-gray-900 dark:text-white">
+                {(() => {
+                  const mostCommon = Object.entries(
+                    roleCounts.primaryCounts,
+                  ).sort((a, b) => b[1] - a[1])[0];
+                  return mostCommon
+                    ? ROLES[mostCommon[0] as RoleId]?.label || mostCommon[0]
+                    : "—";
+                })()}
+              </div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                Avg Score Spread
+              </div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                {Math.round(
+                  filteredSubmissions.reduce(
+                    (sum, s) => sum + s.scoreSpread,
+                    0,
+                  ) / filteredSubmissions.length,
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="team-filter"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Filter by Team
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Team
               </label>
               <select
-                id="team-filter"
                 value={teamFilter}
                 onChange={(e) => setTeamFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Teams</option>
                 {uniqueTeams.map((team) => (
@@ -362,18 +452,14 @@ export default function AdminPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label
-                htmlFor="role-filter"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Filter by Primary Role
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Primary Role
               </label>
               <select
-                id="role-filter"
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Roles</option>
                 {uniqueRoles.map((role) => (
@@ -383,24 +469,123 @@ export default function AdminPage() {
                 ))}
               </select>
             </div>
-          </div>
-          {(teamFilter || roleFilter) && (
-            <div className="mt-4 flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Showing {filteredSubmissions.length} of {submissions.length} submissions
-              </span>
+            {(teamFilter || roleFilter) && (
               <button
                 onClick={() => {
                   setTeamFilter("");
                   setRoleFilter("");
                 }}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
-                Clear filters
+                Clear
               </button>
+            )}
+          </div>
+          {(teamFilter || roleFilter) && (
+            <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+              Showing {filteredSubmissions.length} of {submissions.length}
             </div>
           )}
         </div>
+
+        {/* Team Composition Overview */}
+        {filteredSubmissions.length > 0 &&
+          Object.keys(teamComposition).length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Team Composition
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(teamComposition)
+                  .sort((a, b) => b[1].totalMembers - a[1].totalMembers)
+                  .slice(0, 6)
+                  .map(([teamName, team]) => (
+                    <div
+                      key={teamName}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                          {teamName}
+                        </h3>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {team.totalMembers}{" "}
+                          {team.totalMembers === 1 ? "person" : "people"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["BE", "FE", "QA", "PM"] as RoleId[]).map(
+                          (roleId) => {
+                            const count = team.roleBreakdown[roleId] || 0;
+                            return (
+                              <div
+                                key={roleId}
+                                className="flex items-center justify-between text-xs"
+                              >
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {ROLES[roleId].label}
+                                </span>
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  {count}
+                                </span>
+                              </div>
+                            );
+                          },
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+        {/* Role Distribution - Compact */}
+        {filteredSubmissions.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Role Distribution
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
+                const count = roleCounts.primaryCounts[roleId] || 0;
+                const percentage =
+                  filteredSubmissions.length > 0
+                    ? Math.round((count / filteredSubmissions.length) * 100)
+                    : 0;
+                const maxCount = Math.max(
+                  ...Object.values(roleCounts.primaryCounts),
+                  1,
+                );
+                const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+                return (
+                  <div
+                    key={roleId}
+                    className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {ROLES[roleId].label}
+                      </span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">
+                        {count}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 mb-1">
+                      <div
+                        className="bg-blue-600 h-1.5 rounded-full"
+                        style={{ width: `${barWidth}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {percentage}%
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Results table */}
         {filteredSubmissions.length === 0 ? (
@@ -425,35 +610,23 @@ export default function AdminPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Date
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Name
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Team
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Primary + Secondary Role
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Roles
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Top 3 Skills
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Top Skills
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      BE Score
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      FE Score
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      QA Score
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      PM Score
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      View Details
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -463,69 +636,58 @@ export default function AdminPage() {
                       key={submission.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
                         {new Date(submission.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {submission.name || (
-                          <span className="text-gray-400 italic">Anonymous</span>
+                          <span className="text-gray-400 italic text-xs">
+                            Anonymous
+                          </span>
                         )}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
                         {submission.team || (
                           <span className="text-gray-400 italic">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-sm">
-                        <div className="flex flex-wrap gap-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                             {formatRoleLabel(submission.primaryRole)}
                           </span>
                           {submission.secondaryRole && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                              {ROLES[submission.secondaryRole as RoleId]?.label || submission.secondaryRole}
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                              {ROLES[submission.secondaryRole as RoleId]
+                                ?.label || submission.secondaryRole}
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-sm">
+                      <td className="px-4 py-3 text-xs">
                         {getTopSkillTags(submission).length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {getTopSkillTags(submission).map((tag, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                              >
-                                {tag}
-                              </span>
-                            ))}
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {getTopSkillTags(submission)
+                              .slice(0, 3)
+                              .map((tag, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
                           </div>
                         ) : (
-                          <span className="text-gray-400 italic text-xs">—</span>
+                          <span className="text-gray-400 italic">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        <span className="font-medium">{submission.totals.BE}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        <span className="font-medium">{submission.totals.FE}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        <span className="font-medium">{submission.totals.QA}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        <span className="font-medium">{submission.totals.PM}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">pts</span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <button
                           onClick={() => setSelectedSubmission(submission)}
-                          className="text-blue-600 dark:text-blue-400 hover:underline"
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                         >
-                          View Details
+                          Details
                         </button>
                       </td>
                     </tr>
@@ -533,145 +695,6 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
-
-        {/* Aggregate View: Role Distribution */}
-        {filteredSubmissions.length > 0 && (
-          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Team Balance Overview
-            </h2>
-            
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Total Submissions
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {filteredSubmissions.length}
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Unique Teams
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {new Set(filteredSubmissions.map((s) => s.team).filter(Boolean)).size}
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Avg Score Spread
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {Math.round(
-                    filteredSubmissions.reduce((sum, s) => sum + s.scoreSpread, 0) /
-                      filteredSubmissions.length
-                  )}
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Most Common Role
-                </div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">
-                  {(() => {
-                    const mostCommon = Object.entries(roleCounts.primaryCounts).sort(
-                      (a, b) => b[1] - a[1]
-                    )[0];
-                    return mostCommon
-                      ? ROLES[mostCommon[0] as RoleId]?.label || mostCommon[0]
-                      : "—";
-                  })()}
-                </div>
-              </div>
-            </div>
-
-            {/* Primary Role Distribution */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                Primary Role Distribution
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
-                  const count = roleCounts.primaryCounts[roleId] || 0;
-                  const percentage = filteredSubmissions.length > 0
-                    ? Math.round((count / filteredSubmissions.length) * 100)
-                    : 0;
-                  const maxCount = Math.max(...Object.values(roleCounts.primaryCounts), 1);
-                  const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
-
-                  return (
-                    <div key={roleId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {ROLES[roleId].label}
-                        </span>
-                        <span className="text-lg font-bold text-gray-900 dark:text-white">
-                          {count}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-1">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all"
-                          style={{ width: `${barWidth}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {percentage}% of submissions
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Secondary Role Distribution */}
-            {Object.keys(roleCounts.secondaryCounts).length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  Secondary Role Distribution
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {(["BE", "FE", "QA", "PM"] as RoleId[]).map((roleId) => {
-                    const count = roleCounts.secondaryCounts[roleId] || 0;
-                    const totalWithSecondary = Object.values(roleCounts.secondaryCounts).reduce(
-                      (sum, c) => sum + c,
-                      0
-                    );
-                    const percentage = totalWithSecondary > 0
-                      ? Math.round((count / totalWithSecondary) * 100)
-                      : 0;
-                    const maxCount = Math.max(...Object.values(roleCounts.secondaryCounts), 1);
-                    const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
-
-                    return (
-                      <div key={roleId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {ROLES[roleId].label}
-                          </span>
-                          <span className="text-lg font-bold text-gray-900 dark:text-white">
-                            {count}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-1">
-                          <div
-                            className="bg-indigo-600 h-2 rounded-full transition-all"
-                            style={{ width: `${barWidth}%` }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {percentage}% of secondary roles
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -690,7 +713,8 @@ export default function AdminPage() {
                   Clear All Data
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Are you sure you want to delete all {submissions.length} submission(s)? This action cannot be undone.
+                  Are you sure you want to delete all {submissions.length}{" "}
+                  submission(s)? This action cannot be undone.
                 </p>
                 <div className="flex gap-3 justify-end">
                   <button
@@ -723,53 +747,61 @@ export default function AdminPage() {
               className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Submission Details
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  {selectedSubmission.name || "Anonymous"} -{" "}
+                  {formatRoleLabel(selectedSubmission.primaryRole)}
                 </h2>
                 <button
                   onClick={() => setSelectedSubmission(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl font-bold"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl font-bold"
                 >
                   ×
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-5">
                 {/* Basic Info */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                    Basic Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Name:</span>
-                      <p className="text-gray-900 dark:text-white">
-                        {selectedSubmission.name || "Anonymous"}
-                      </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      Name
                     </div>
-                    <div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Team:</span>
-                      <p className="text-gray-900 dark:text-white">
-                        {selectedSubmission.team || "—"}
-                      </p>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {selectedSubmission.name || "Anonymous"}
                     </div>
-                    <div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Date:</span>
-                      <p className="text-gray-900 dark:text-white">
-                        {new Date(selectedSubmission.createdAt).toLocaleString()}
-                      </p>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      Team
                     </div>
-                    <div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Score Spread:</span>
-                      <p className="text-gray-900 dark:text-white">{selectedSubmission.scoreSpread} pts</p>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {selectedSubmission.team || "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      Date
+                    </div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {new Date(
+                        selectedSubmission.createdAt,
+                      ).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      Score Spread
+                    </div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {selectedSubmission.scoreSpread} pts
                     </div>
                   </div>
                 </div>
 
                 {/* Role Rankings */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                     Role Rankings
                   </h3>
                   <div className="space-y-2">
@@ -777,39 +809,50 @@ export default function AdminPage() {
                       .sort((a, b) => a.rank - b.rank)
                       .map((ranked) => {
                         const role = ROLES[ranked.roleId];
-                        const maxScore = Math.max(...Object.values(selectedSubmission.totals));
-                        const percentage = maxScore > 0 ? Math.round((ranked.score / maxScore) * 100) : 0;
-                        const isPrimary = ranked.roleId === (selectedSubmission.primaryRole.includes(" + ")
-                          ? selectedSubmission.primaryRole.split(" + ")[0]
-                          : selectedSubmission.primaryRole);
-                        const isSecondary = ranked.roleId === selectedSubmission.secondaryRole;
+                        const maxScore = Math.max(
+                          ...Object.values(selectedSubmission.totals),
+                        );
+                        const percentage =
+                          maxScore > 0
+                            ? Math.round((ranked.score / maxScore) * 100)
+                            : 0;
+                        const isPrimary =
+                          ranked.roleId ===
+                          (selectedSubmission.primaryRole.includes(" + ")
+                            ? selectedSubmission.primaryRole.split(" + ")[0]
+                            : selectedSubmission.primaryRole);
+                        const isSecondary =
+                          ranked.roleId === selectedSubmission.secondaryRole;
 
                         return (
-                          <div key={ranked.roleId} className="flex items-center gap-4">
-                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 w-8">
+                          <div
+                            key={ranked.roleId}
+                            className="flex items-center gap-3"
+                          >
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-6">
                               #{ranked.rank}
                             </span>
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white w-32">
+                            <span className="text-xs font-semibold text-gray-900 dark:text-white w-28">
                               {role.label}
                             </span>
-                            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+                            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                               <div
-                                className={`h-4 rounded-full ${
+                                className={`h-2 rounded-full ${
                                   isPrimary
                                     ? "bg-blue-600"
                                     : isSecondary
-                                    ? "bg-indigo-500"
-                                    : "bg-gray-400"
+                                      ? "bg-indigo-500"
+                                      : "bg-gray-400"
                                 }`}
                                 style={{ width: `${percentage}%` }}
                               ></div>
                             </div>
-                            <span className="text-sm font-bold text-gray-900 dark:text-white w-16 text-right">
-                              {ranked.score} pts
+                            <span className="text-xs font-bold text-gray-900 dark:text-white w-12 text-right">
+                              {ranked.score}
                             </span>
                             {(isPrimary || isSecondary) && (
-                              <span className="text-xs px-2 py-1 rounded font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                {isPrimary ? "Primary" : "Secondary"}
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                {isPrimary ? "P" : "S"}
                               </span>
                             )}
                           </div>
@@ -819,121 +862,68 @@ export default function AdminPage() {
                 </div>
 
                 {/* Top Skills */}
-                {selectedSubmission.skillProfile && getTopSkillTags(selectedSubmission).length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                      Top Skills
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {getTopSkillTags(selectedSubmission).map((tag, idx) => {
-                        const frequency = selectedSubmission.skillProfile!.tagFrequency[tag] || 1;
-                        return (
+                {selectedSubmission.skillProfile &&
+                  getTopSkillTags(selectedSubmission).length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Top Skills
+                      </h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {getTopSkillTags(selectedSubmission).map((tag, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                           >
                             {tag}
-                            {frequency > 1 && (
-                              <span className="ml-1.5 text-xs opacity-75">({frequency})</span>
-                            )}
                           </span>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Evidence Highlights */}
-                {selectedSubmission.evidenceHighlights && selectedSubmission.evidenceHighlights.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                      Evidence from Choices
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedSubmission.evidenceHighlights.slice(0, 5).map((highlight, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
-                        >
-                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {highlight.evidence}
-                          </p>
-                          {highlight.signals && highlight.signals.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {highlight.signals.map((signal, sIdx) => (
-                                <span
-                                  key={sIdx}
-                                  className="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
-                                >
-                                  {signal}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Recommendations */}
-                {(selectedSubmission.primaryRecommendations || selectedSubmission.secondaryRecommendations) && (
+                {(selectedSubmission.primaryRecommendations ||
+                  selectedSubmission.secondaryRecommendations) && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                      Recommendations
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                      Best Use Cases
                     </h3>
-                    <div className="space-y-4">
-                      {selectedSubmission.primaryRecommendations && selectedSubmission.primaryRecommendations.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Primary Role:
-                          </h4>
-                          <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
-                            {selectedSubmission.primaryRecommendations.map((rec, idx) => (
-                              <li key={idx}>{rec}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {selectedSubmission.secondaryRecommendations && selectedSubmission.secondaryRecommendations.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Secondary Role:
-                          </h4>
-                          <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
-                            {selectedSubmission.secondaryRecommendations.map((rec, idx) => (
-                              <li key={idx}>{rec}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Summary Text */}
-                {selectedSubmission.summaryText && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                      Summary
-                    </h3>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                      {selectedSubmission.summaryText}
-                    </p>
+                    <ul className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                      {selectedSubmission.primaryRecommendations
+                        ?.slice(0, 5)
+                        .map((rec, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-blue-600 dark:text-blue-400 mt-0.5">
+                              •
+                            </span>
+                            <span>{rec}</span>
+                          </li>
+                        ))}
+                      {selectedSubmission.secondaryRecommendations
+                        ?.slice(0, 2)
+                        .map((rec, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-indigo-600 dark:text-indigo-400 mt-0.5">
+                              •
+                            </span>
+                            <span>{rec}</span>
+                          </li>
+                        ))}
+                    </ul>
                   </div>
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Link
                     href={`/result/${selectedSubmission.id}`}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
                   >
-                    View Full Result Page
+                    View Full Result
                   </Link>
                   <button
                     onClick={() => setSelectedSubmission(null)}
-                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold rounded-lg transition-colors"
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white text-sm font-semibold rounded-lg transition-colors"
                   >
                     Close
                   </button>
