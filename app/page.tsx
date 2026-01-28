@@ -23,6 +23,12 @@ export default function Home() {
                 Take Quiz
               </Link>
               <Link
+                href="/how-it-works"
+                className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm font-medium"
+              >
+                How It Works
+              </Link>
+              <Link
                 href="/admin"
                 className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm font-medium"
               >
@@ -79,11 +85,22 @@ export default function Home() {
             </Link>
             <Link
               href="/how-it-works"
-              className="inline-block bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200"
+              className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
             >
               How It Works
             </Link>
           </div>
+          
+          {/* Additional link text */}
+          <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
+            Want to understand how scores are calculated?{" "}
+            <Link
+              href="/how-it-works"
+              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            >
+              Learn more →
+            </Link>
+          </p>
         </div>
       </div>
     </div>
