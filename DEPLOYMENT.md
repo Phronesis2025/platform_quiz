@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers everything you need to deploy and manage the Platform Quiz application on Vercel using Redis (Vercel KV) for data storage.
+This guide covers everything you need to deploy and manage the Role Alignment Assessment application on Vercel using Redis (Vercel KV) for data storage.
 
 **Repository**: [https://github.com/Phronesis2025/platform_quiz](https://github.com/Phronesis2025/platform_quiz)
 
@@ -105,10 +105,12 @@ vercel env pull .env.local
 This will automatically create/update your `.env.local` file with all the correct variables!
 
 **Note**: When you run `vercel env pull`, you'll get:
+
 - `REDIS_URL` - Your Redis connection string (required for the app)
 - `VERCEL_OIDC_TOKEN` - Vercel CLI authentication token (not needed by the app, but safe to keep)
 
 **Important Notes:**
+
 - Vercel provides `REDIS_URL` (direct connection string) - this is what you need
 - Format: `redis://default:password@host:port`
 - You won't see `KV_REST_API_URL` or `KV_REST_API_TOKEN` - those are from older setups
@@ -149,12 +151,13 @@ Only do this if Vercel didn't auto-configure the variable:
 
 Vercel automatically provides the Redis connection variable when you create a KV database:
 
-| Variable | Description | Where to Get It |
-|----------|-------------|-----------------|
-| `REDIS_URL` | Direct Redis connection string | Automatically provided by Vercel |
-| `NEXT_PUBLIC_QUIZ_CODE` | Access code for quiz (optional) | Set your own secret code |
+| Variable                | Description                     | Where to Get It                  |
+| ----------------------- | ------------------------------- | -------------------------------- |
+| `REDIS_URL`             | Direct Redis connection string  | Automatically provided by Vercel |
+| `NEXT_PUBLIC_QUIZ_CODE` | Access code for quiz (optional) | Set your own secret code         |
 
-**Important**: 
+**Important**:
+
 - Vercel provides `REDIS_URL` automatically - you don't need to set it manually
 - You won't see `KV_REST_API_URL` or `KV_REST_API_TOKEN` - those are from older Vercel KV setups
 - The `@vercel/kv` package automatically uses `REDIS_URL`
@@ -180,6 +183,7 @@ vercel env pull .env.local
 ```
 
 **What you'll get:**
+
 - `REDIS_URL` - Redis connection string (required for the app)
 - `VERCEL_OIDC_TOKEN` - Vercel CLI authentication token (not needed by the app, but safe to keep in `.env.local`)
 
@@ -219,6 +223,7 @@ The access code prevents unauthorized access to the quiz. It's optional but reco
 #### Local Development
 
 Add to `.env.local`:
+
 ```env
 NEXT_PUBLIC_QUIZ_CODE=your-secret-code-here
 ```
@@ -267,6 +272,7 @@ Quiz submissions are stored in Vercel KV (Redis) with the following structure:
 - **Index**: `submissions:index` - Sorted set for ordering by creation date
 
 Each submission includes:
+
 - Quiz responses (raw answers)
 - Computed role scores
 - User metadata (name, team - optional)
@@ -281,6 +287,7 @@ Each submission includes:
 ### Viewing Stored Data
 
 You can view submissions through:
+
 1. **Admin Page** (`/admin`) - Web interface to view all submissions
 2. **Vercel KV Dashboard** - Direct access to Redis data (requires Vercel account)
 
@@ -293,6 +300,7 @@ Use the **CSV Export** feature on the admin page to download all submissions.
 To delete individual submissions or all data:
 
 **Option 1: Using Vercel KV Dashboard**
+
 1. Go to your Vercel project dashboard
 2. Navigate to **Storage** > **KV**
 3. Click on your KV database
@@ -315,6 +323,7 @@ Navigate to `/admin` on your deployed application.
 ### Viewing Submissions
 
 The admin page displays all quiz submissions in a table with:
+
 - Date/Time
 - Name (if provided)
 - Team (if provided)
@@ -343,6 +352,7 @@ The admin page displays all quiz submissions in a table with:
 3. **File downloads**: A CSV file named `role-fit-submissions-YYYY-MM-DD.csv` will download
 
 **CSV Contents**:
+
 - Date
 - Name
 - Team
@@ -359,6 +369,7 @@ The admin page displays all quiz submissions in a table with:
 ### Summary Statistics
 
 The admin page shows summary statistics:
+
 - **Total Submissions**: Count of all submissions (filtered)
 - **Unique Teams**: Number of different teams
 - **Avg Score Spread**: Average score spread across submissions
@@ -371,6 +382,7 @@ The admin page shows summary statistics:
 **Error**: `REDIS_URL` not found
 
 **Solution**:
+
 1. **Check if Vercel auto-configured it**: Go to **Settings** > **Environment Variables** and look for `REDIS_URL`
 2. **You won't see `KV_REST_API_URL` or `KV_REST_API_TOKEN`** - those are from older setups. Vercel uses `REDIS_URL` instead.
 3. If `REDIS_URL` is missing, the KV database might not be properly linked to your project
@@ -404,16 +416,17 @@ The admin page shows summary statistics:
    - **You won't see REST API URL/Token** - Vercel uses `REDIS_URL` instead
 
 4. **Use Vercel CLI** (if dashboard is unclear):
+
    ```bash
    # Install and login to Vercel CLI
    npm i -g vercel
    vercel login
    vercel link
-   
+
    # Pull environment variables (includes REDIS_URL and VERCEL_OIDC_TOKEN)
    vercel env pull .env.local
    ```
-   
+
    This will create/update your `.env.local` with:
    - `REDIS_URL` - Your Redis connection (required)
    - `VERCEL_OIDC_TOKEN` - Vercel CLI token (not needed by app, but safe to keep)
@@ -428,6 +441,7 @@ The admin page shows summary statistics:
 **Symptoms**: Users can't access quiz even with correct code
 
 **Solutions**:
+
 1. Verify `NEXT_PUBLIC_QUIZ_CODE` is set in environment variables
 2. Check that the code matches exactly (case-sensitive, no extra spaces)
 3. Ensure the application has been redeployed after setting the variable
@@ -438,6 +452,7 @@ The admin page shows summary statistics:
 **Symptoms**: Legitimate users getting rate limited
 
 **Solutions**:
+
 1. The rate limiter uses Vercel KV automatically if available
 2. Adjust rate limit settings in `src/lib/rate-limit.ts`:
    - `RATE_LIMIT_MAX_REQUESTS`: Increase from 5 if needed
@@ -449,6 +464,7 @@ The admin page shows summary statistics:
 **Error**: TypeScript or build errors
 
 **Solutions**:
+
 1. Run `npm run build` locally to see errors
 2. Check that all dependencies are installed: `npm install`
 3. Verify TypeScript configuration is correct
@@ -457,6 +473,7 @@ The admin page shows summary statistics:
 **Error**: "No Output Directory named 'public' found after the Build completed"
 
 **Solution**:
+
 1. The project includes a `vercel.json` file that configures Vercel to detect Next.js properly
 2. If you still see this error, check your Vercel project settings:
    - Go to **Settings** > **General**
@@ -471,6 +488,7 @@ The admin page shows summary statistics:
 **Symptoms**: Admin page shows "Loading..." indefinitely
 
 **Solutions**:
+
 1. Check browser console for errors
 2. Verify `/api/submissions` endpoint is accessible
 3. Check that KV connection is working
@@ -481,6 +499,7 @@ The admin page shows summary statistics:
 **Symptoms**: Submissions are not being saved
 
 **Solutions**:
+
 1. Check that `REDIS_URL` is set correctly
 2. Verify the KV database is active in Vercel dashboard
 3. Check server logs for errors
@@ -498,6 +517,7 @@ The admin page shows summary statistics:
 ## Support
 
 For issues or questions:
+
 - Check the [README.md](./README.md) for general information
 - Review Vercel KV documentation for Redis-specific help
 - Check Vercel documentation for deployment issues

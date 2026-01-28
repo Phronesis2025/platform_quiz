@@ -1,4 +1,4 @@
-# Platform Quiz
+# Role Alignment Assessment
 
 A Next.js 14+ quiz application built with TypeScript, Tailwind CSS, and the App Router.
 
@@ -90,6 +90,7 @@ This project uses Vercel KV (Redis) for data persistence. Quiz submissions are s
 - Request metadata (user agent, IP hash)
 
 Data is stored using Redis key patterns:
+
 - `submission:{id}` - Individual submission data (JSON)
 - `submissions:index` - Sorted set for ordering by creation date
 

@@ -12,7 +12,7 @@ export default function Home() {
                 href="/"
                 className="text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
-                Platform Quiz
+                Role Alignment Assessment
               </Link>
             </div>
             <nav className="flex items-center gap-4">
@@ -44,7 +44,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto px-6 py-12 text-center">
           {/* Main heading */}
           <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Platform Quiz
+            Role Alignment Assessment
           </h1>
 
           {/* Description paragraph */}
@@ -90,7 +90,7 @@ export default function Home() {
               How It Works
             </Link>
           </div>
-          
+
           {/* Additional link text */}
           <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
             Want to understand how scores are calculated?{" "}

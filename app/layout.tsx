@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Platform Quiz",
-  description: "Test your knowledge with our platform quiz",
+  title: "Role Alignment Assessment",
+  description:
+    "Identify how individuals naturally approach problem-solving, risk, and delivery under pressure",
 };
 
 export default function RootLayout({
@@ -13,9 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
