@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ROLES, type RoleId } from "@/src/lib/quiz";
-import { getRolePlaybookByString, getRolePlaybook } from "@/src/lib/rolePlaybooks";
+import {
+  getRolePlaybookByString,
+  getRolePlaybook,
+} from "@/src/lib/rolePlaybooks";
+import {
+  getRoleSoftwareByString,
+  getRoleSoftware,
+} from "@/src/lib/roleSoftware";
 
 // Type definition for quiz submission
 interface QuizSubmission {
@@ -51,31 +58,31 @@ export default function ResultPage() {
     const fetchResult = async () => {
       try {
         const response = await fetch(`/api/submit-quiz?id=${resultId}`);
-        
+
         if (!response.ok) {
           if (response.status === 404) {
             // Result not found, try localStorage as fallback
             const storedResults = JSON.parse(
-              localStorage.getItem("quizResults") || "[]"
+              localStorage.getItem("quizResults") || "[]",
             );
             const foundResult = storedResults.find(
-              (r: QuizSubmission) => r.id === resultId
+              (r: QuizSubmission) => r.id === resultId,
             );
-            
+
             if (foundResult) {
               setResult(foundResult);
               setLoading(false);
               return;
             }
           }
-          
+
           // If not found in API or localStorage, redirect to home
           router.push("/");
           return;
         }
 
         const data = await response.json();
-        
+
         // Transform API response to match QuizSubmission interface
         const submission: QuizSubmission = {
           id: data.id,
@@ -100,15 +107,15 @@ export default function ResultPage() {
         setResult(submission);
       } catch (error) {
         console.error("Error fetching result:", error);
-        
+
         // Fallback to localStorage
         const storedResults = JSON.parse(
-          localStorage.getItem("quizResults") || "[]"
+          localStorage.getItem("quizResults") || "[]",
         );
         const foundResult = storedResults.find(
-          (r: QuizSubmission) => r.id === resultId
+          (r: QuizSubmission) => r.id === resultId,
         );
-        
+
         if (foundResult) {
           setResult(foundResult);
         } else {
@@ -125,7 +132,9 @@ export default function ResultPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-gray-600 dark:text-gray-400">Loading your results...</div>
+        <div className="text-gray-600 dark:text-gray-400">
+          Loading your results...
+        </div>
       </div>
     );
   }
@@ -145,7 +154,9 @@ export default function ResultPage() {
     }
 
     const summary = narrative.substring(0, whyIndex).trim();
-    const bulletsText = narrative.substring(whyIndex + "Here's why this role fits you:".length).trim();
+    const bulletsText = narrative
+      .substring(whyIndex + "Here's why this role fits you:".length)
+      .trim();
     const bullets = bulletsText
       .split("\n")
       .map((line) => line.replace(/^•\s*/, "").trim())
@@ -162,8 +173,14 @@ export default function ResultPage() {
     let secondaryRoleId: RoleId | null = null;
     let isTie = false;
 
-    if (typeof result.scoring.primaryRole === "string" && result.scoring.primaryRole.includes(" + ")) {
-      const [role1, role2] = result.scoring.primaryRole.split(" + ") as [RoleId, RoleId];
+    if (
+      typeof result.scoring.primaryRole === "string" &&
+      result.scoring.primaryRole.includes(" + ")
+    ) {
+      const [role1, role2] = result.scoring.primaryRole.split(" + ") as [
+        RoleId,
+        RoleId,
+      ];
       primaryRoleId = role1;
       secondaryRoleId = role2;
       isTie = true;
@@ -187,7 +204,9 @@ export default function ResultPage() {
     const roleId = ranked.roleId;
     let label = "";
     if (roleInfo.isTie) {
-      const [role1, role2] = (result.scoring.primaryRole as string).split(" + ") as [RoleId, RoleId];
+      const [role1, role2] = (result.scoring.primaryRole as string).split(
+        " + ",
+      ) as [RoleId, RoleId];
       if (roleId === role1 || roleId === role2) {
         label = "Primary";
       } else if (ranked.rank === 3) {
@@ -236,12 +255,24 @@ export default function ResultPage() {
     ? getRolePlaybook(result.scoring.secondaryRole)
     : null;
 
+  // Get role-based software recommendations
+  const primarySoftware = getRoleSoftwareByString(result.scoring.primaryRole);
+  const secondarySoftware = result.scoring.secondaryRole
+    ? getRoleSoftware(result.scoring.secondaryRole)
+    : null;
+
   // Build "How to use you" section: use stored recommendations if available, otherwise compute from playbooks
   const howToUseYou: string[] = [];
-  if (result.scoring.primaryRecommendations && result.scoring.primaryRecommendations.length > 0) {
+  if (
+    result.scoring.primaryRecommendations &&
+    result.scoring.primaryRecommendations.length > 0
+  ) {
     // Use stored recommendations (new format)
     howToUseYou.push(...result.scoring.primaryRecommendations);
-    if (result.scoring.secondaryRecommendations && result.scoring.secondaryRecommendations.length >= 2) {
+    if (
+      result.scoring.secondaryRecommendations &&
+      result.scoring.secondaryRecommendations.length >= 2
+    ) {
       howToUseYou.push(...result.scoring.secondaryRecommendations.slice(0, 2));
     }
   } else {
@@ -314,14 +345,17 @@ export default function ResultPage() {
             </h2>
             <div className="space-y-3 print:space-y-2">
               {rankedRoles.map((ranked) => {
-                const percentage = maxScore > 0 ? Math.round((ranked.score / maxScore) * 100) : 0;
+                const percentage =
+                  maxScore > 0
+                    ? Math.round((ranked.score / maxScore) * 100)
+                    : 0;
                 const isPrimary = ranked.label === "Primary";
                 const isSecondary = ranked.label === "Secondary";
                 const barColor = isPrimary
                   ? "bg-blue-600"
                   : isSecondary
-                  ? "bg-indigo-500"
-                  : "bg-gray-400";
+                    ? "bg-indigo-500"
+                    : "bg-gray-400";
 
                 return (
                   <div key={ranked.roleId} className="print:break-inside-avoid">
@@ -338,8 +372,8 @@ export default function ResultPage() {
                             isPrimary
                               ? "bg-blue-600 text-white"
                               : isSecondary
-                              ? "bg-indigo-500 text-white"
-                              : "bg-gray-200 text-gray-700"
+                                ? "bg-indigo-500 text-white"
+                                : "bg-gray-200 text-gray-700"
                           }`}
                         >
                           {ranked.label}
@@ -369,7 +403,8 @@ export default function ResultPage() {
               </h2>
               <div className="flex flex-wrap gap-2 print:gap-1.5">
                 {topSkillTags.map((tag, index) => {
-                  const frequency = result.scoring.skillProfile?.tagFrequency[tag] || 1;
+                  const frequency =
+                    result.scoring.skillProfile?.tagFrequency[tag] || 1;
                   return (
                     <span
                       key={index}
@@ -418,14 +453,109 @@ export default function ResultPage() {
               <div className="bg-green-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-green-200">
                 <ul className="space-y-3 print:space-y-2">
                   {howToUseYou.map((item, index) => (
-                    <li key={index} className="flex items-start gap-3 print:gap-2">
+                    <li
+                      key={index}
+                      className="flex items-start gap-3 print:gap-2"
+                    >
                       <span className="text-green-600 font-bold mt-1 print:mt-0.5 print:text-sm">
                         •
                       </span>
-                      <span className="text-gray-700 flex-1 print:text-sm">{item}</span>
+                      <span className="text-gray-700 flex-1 print:text-sm">
+                        {item}
+                      </span>
                     </li>
                   ))}
                 </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Software to Explore Next */}
+          {primarySoftware && primarySoftware.learnFirst.length > 0 && (
+            <div className="mb-8 print:mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
+                Software to Explore Based on Your Role
+              </h2>
+              <div className="bg-purple-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-purple-200">
+                <p className="text-sm text-gray-700 mb-4 print:text-sm">
+                  Based on your strongest role fit and the software requirements
+                  document, these are the tools we recommend you start learning.
+                  Begin with the first list, then move into the &quot;next&quot;
+                  tools as you get comfortable.
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-6 print:gap-4">
+                  {/* Primary role software */}
+                  <div className="print:break-inside-avoid">
+                    <h3 className="text-base font-semibold text-gray-900 mb-3 print:text-sm">
+                      Focus tools for your primary role
+                    </h3>
+                    <ul className="space-y-2 print:space-y-1.5">
+                      {primarySoftware.learnFirst.map((tool, index) => (
+                        <li
+                          key={index}
+                          className="flex items-start gap-2 text-sm text-gray-700 print:text-sm"
+                        >
+                          <span className="mt-1 text-purple-600 font-bold print:text-xs">
+                            •
+                          </span>
+                          <span className="flex-1">{tool}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {primarySoftware.nextSteps.length > 0 && (
+                      <>
+                        <h4 className="mt-4 text-sm font-semibold text-gray-900 print:text-xs">
+                          Once you&apos;re comfortable, grow into:
+                        </h4>
+                        <ul className="mt-2 space-y-2 print:space-y-1.5">
+                          {primarySoftware.nextSteps.map((tool, index) => (
+                            <li
+                              key={index}
+                              className="flex items-start gap-2 text-sm text-gray-700 print:text-sm"
+                            >
+                              <span className="mt-1 text-purple-600 font-bold print:text-xs">
+                                •
+                              </span>
+                              <span className="flex-1">{tool}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Secondary role software (optional, short list) */}
+                  {secondarySoftware &&
+                    (secondarySoftware.learnFirst.length > 0 ||
+                      secondarySoftware.nextSteps.length > 0) && (
+                      <div className="print:break-inside-avoid">
+                        <h3 className="text-base font-semibold text-gray-900 mb-3 print:text-sm">
+                          Optional tools from your secondary fit
+                        </h3>
+                        <p className="text-xs text-gray-600 mb-2 print:text-xs">
+                          Use these if you want to stretch into your
+                          second-strongest role.
+                        </p>
+                        <ul className="space-y-2 print:space-y-1.5">
+                          {[...secondarySoftware.learnFirst]
+                            .slice(0, 4)
+                            .map((tool, index) => (
+                              <li
+                                key={index}
+                                className="flex items-start gap-2 text-sm text-gray-700 print:text-sm"
+                              >
+                                <span className="mt-1 text-purple-600 font-bold print:text-xs">
+                                  •
+                                </span>
+                                <span className="flex-1">{tool}</span>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
+                </div>
               </div>
             </div>
           )}
@@ -439,11 +569,16 @@ export default function ResultPage() {
               <div className="bg-amber-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-amber-200">
                 <ul className="space-y-3 print:space-y-2">
                   {primaryPlaybook.watchOutFor.map((item, index) => (
-                    <li key={index} className="flex items-start gap-3 print:gap-2">
+                    <li
+                      key={index}
+                      className="flex items-start gap-3 print:gap-2"
+                    >
                       <span className="text-amber-600 font-bold mt-1 print:mt-0.5 print:text-sm">
                         •
                       </span>
-                      <span className="text-gray-700 flex-1 print:text-sm">{item}</span>
+                      <span className="text-gray-700 flex-1 print:text-sm">
+                        {item}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -452,40 +587,50 @@ export default function ResultPage() {
           )}
 
           {/* How to Contribute If Not Primary Fit */}
-          {primaryPlaybook && primaryPlaybook.howToContributeIfNotPrimary && primaryPlaybook.howToContributeIfNotPrimary.length > 0 && (
-            <div className="mb-8 print:mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
-                How to Contribute If You&apos;re NOT the Primary Fit
-              </h2>
-              <div className="bg-blue-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-blue-200">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 print:text-xs italic">
-                  Even if this isn&apos;t your primary role fit, you still have valuable contributions to make. Here&apos;s how you can add value:
-                </p>
-                <ul className="space-y-3 print:space-y-2">
-                  {primaryPlaybook.howToContributeIfNotPrimary.map((item, index) => (
-                    <li key={index} className="flex items-start gap-3 print:gap-2">
-                      <span className="text-blue-600 font-bold mt-1 print:mt-0.5 print:text-sm">
-                        •
-                      </span>
-                      <span className="text-gray-700 flex-1 print:text-sm">{item}</span>
-                    </li>
-                  ))}
-                </ul>
+          {primaryPlaybook &&
+            primaryPlaybook.howToContributeIfNotPrimary &&
+            primaryPlaybook.howToContributeIfNotPrimary.length > 0 && (
+              <div className="mb-8 print:mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 print:text-lg print:mb-3">
+                  How to Contribute If You&apos;re NOT the Primary Fit
+                </h2>
+                <div className="bg-blue-50 rounded-lg p-6 print:p-4 print:bg-white print:border print:border-blue-200">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 print:text-xs italic">
+                    Even if this isn&apos;t your primary role fit, you still
+                    have valuable contributions to make. Here&apos;s how you can
+                    add value:
+                  </p>
+                  <ul className="space-y-3 print:space-y-2">
+                    {primaryPlaybook.howToContributeIfNotPrimary.map(
+                      (item, index) => (
+                        <li
+                          key={index}
+                          className="flex items-start gap-3 print:gap-2"
+                        >
+                          <span className="text-blue-600 font-bold mt-1 print:mt-0.5 print:text-sm">
+                            •
+                          </span>
+                          <span className="text-gray-700 flex-1 print:text-sm">
+                            {item}
+                          </span>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Footer */}
           <div className="mt-8 pt-6 border-t-2 border-gray-300 print:border-gray-400">
             <div className="bg-gray-50 rounded-lg p-4 print:p-3 print:bg-white print:border print:border-gray-300">
               <p className="text-sm text-gray-600 text-center print:text-xs">
-                <strong>Note:</strong> This is guidance for team composition and project planning, not a performance evaluation.
+                <strong>Note:</strong> This is guidance for team composition and
+                project planning, not a performance evaluation.
               </p>
             </div>
             <div className="no-print mt-4 text-center text-sm text-gray-500">
-              <p>
-                Completed: {new Date(result.timestamp).toLocaleString()}
-              </p>
+              <p>Completed: {new Date(result.timestamp).toLocaleString()}</p>
               <p className="mt-2">
                 Share this result:{" "}
                 <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
