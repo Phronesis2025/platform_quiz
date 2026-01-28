@@ -44,7 +44,7 @@ export default function HowItWorksPage() {
           <div className="prose prose-gray dark:prose-invert max-w-none">
             <p className="text-lg text-gray-700 dark:text-gray-300 mb-8">
               This page explains how your quiz answers determine your role fit
-              scores and which role you're assigned to.
+              scores and which role you&apos;re assigned to.
             </p>
 
             {/* Overview */}
@@ -103,12 +103,12 @@ export default function HowItWorksPage() {
                       question
                     </li>
                     <li>
-                      These are considered "strong signals" because they clearly
+                      These are considered &quot;strong signals&quot; because they clearly
                       indicate a role preference
                     </li>
                   </ul>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 italic">
-                    Example: "What concerns you most?" → Each answer option maps
+                    Example: &quot;What concerns you most?&quot; → Each answer option maps
                     to one role and gives it +2 points.
                   </p>
                 </div>
@@ -133,12 +133,12 @@ export default function HowItWorksPage() {
                       receive points
                     </li>
                     <li>
-                      These provide "moderate signals" about your preferences
+                      These provide &quot;moderate signals&quot; about your preferences
                     </li>
                   </ul>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 italic">
-                    Example: "Which tasks do you find most engaging? (Select up
-                    to 2)" → Each selected option gives +1 point to its role.
+                    Example: &quot;Which tasks do you find most engaging? (Select up
+                    to 2)&quot; → Each selected option gives +1 point to its role.
                   </p>
                 </div>
 
@@ -167,8 +167,8 @@ export default function HowItWorksPage() {
                     <li>Some positions may award points to multiple roles</li>
                   </ul>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 italic">
-                    Example: "I prefer to slow down briefly to reduce future
-                    rework" → Strongly Agree might give +2 to QA, while Strongly
+                    Example: &quot;I prefer to slow down briefly to reduce future
+                    rework&quot; → Strongly Agree might give +2 to QA, while Strongly
                     Disagree gives +2 to FE.
                   </p>
                 </div>
@@ -183,7 +183,7 @@ export default function HowItWorksPage() {
               <ol className="list-decimal list-inside space-y-3 text-gray-700 dark:text-gray-300">
                 <li>
                   <strong>Points accumulate:</strong> As you answer each
-                  question, points are added to each role's total score based on
+                  question, points are added to each role&apos;s total score based on
                   your selections.
                 </li>
                 <li>
@@ -223,14 +223,14 @@ export default function HowItWorksPage() {
                     roles have the same total score, move to step 2.
                   </li>
                   <li>
-                    <strong>Second:</strong> Count "strong signals" (+2 point
+                    <strong>Second:</strong> Count &quot;strong signals&quot; (+2 point
                     answers). The role with more strong signals wins. If still
                     tied, move to step 3.
                   </li>
                   <li>
                     <strong>Third:</strong> If scores and strong signals are
-                    equal, roles are considered tied and shown as "Role1 +
-                    Role2" (e.g., "BE + FE").
+                    equal, roles are considered tied and shown as &quot;Role1 +
+                    Role2&quot; (e.g., &quot;BE + FE&quot;).
                   </li>
                 </ol>
               </div>
@@ -255,7 +255,7 @@ export default function HowItWorksPage() {
                   <p className="text-gray-700 dark:text-gray-300">
                     If two roles are tied for first place (same score AND same
                     number of strong signals), both are shown as your primary
-                    role (e.g., "BE + FE"). This indicates you have balanced
+                    role (e.g., &quot;BE + FE&quot;). This indicates you have balanced
                     strengths across both roles.
                   </p>
                 </div>
@@ -273,8 +273,8 @@ export default function HowItWorksPage() {
               <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
                 <li>
                   <strong>Skill Tags:</strong> Each answer option has associated
-                  skill tags (like "Root-cause thinking", "User empathy", etc.).
-                  These are collected and shown as your "Strongest Signals" on
+                  skill tags (like &quot;Root-cause thinking&quot;, &quot;User empathy&quot;, etc.).
+                  These are collected and shown as your &quot;Strongest Signals&quot; on
                   your results page.
                 </li>
                 <li>
@@ -292,7 +292,7 @@ export default function HowItWorksPage() {
               </h2>
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
                 <p className="text-gray-700 dark:text-gray-300 mb-4">
-                  Let's say you answer 10 questions:
+                  Let&apos;s say you answer 10 questions:
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 mb-4">
                   <li>

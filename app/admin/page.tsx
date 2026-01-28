@@ -355,7 +355,7 @@ export default function AdminPage() {
                   balance and where you might need to hire or develop skills
                 </li>
                 <li>
-                  <strong>Individual Details:</strong> Click "Details" on any
+                  <strong>Individual Details:</strong> Click &quot;Details&quot; on any
                   person to see their full role fit profile and recommendations
                 </li>
                 <li>
@@ -597,7 +597,7 @@ export default function AdminPage() {
                 All Submissions
               </h2>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Complete list of all quiz submissions. Click "Details" to see
+                Complete list of all quiz submissions. Click &quot;Details&quot; to see
                 full role fit profile, skill tags, evidence highlights, and
                 recommendations for each person.
               </p>
@@ -704,7 +704,7 @@ export default function AdminPage() {
                   </p>
                   <p>
                     The role with the highest total score based on quiz answers.
-                    This represents the person's strongest natural fit.
+                    This represents the person&apos;s strongest natural fit.
                   </p>
                 </div>
                 <div>
