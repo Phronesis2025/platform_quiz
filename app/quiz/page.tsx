@@ -73,9 +73,19 @@ export default function QuizPage() {
 
   // Get current question from allQuestions (core + bonus)
   const currentQuestion = allQuestions[currentQuestionIndex];
+  // Check if current question is a bonus question (ID >= 100)
+  const isBonusQuestion = currentQuestion && currentQuestion.id >= 100;
+  // Calculate total questions (core + bonus if they've been added)
+  const totalQuestions = allQuestions.length;
+  // Calculate which bonus question number this is (if bonus)
+  const bonusQuestionNumber = isBonusQuestion
+    ? currentQuestionIndex - QUESTIONS.length + 1
+    : 0;
+  const totalBonusQuestions = bonusQuestionIds.length;
+  
   const progress =
-    allQuestions.length > 0
-      ? ((currentQuestionIndex + 1) / allQuestions.length) * 100
+    totalQuestions > 0
+      ? ((currentQuestionIndex + 1) / totalQuestions) * 100
       : 0;
 
   // Handle welcome form submission
@@ -191,8 +201,8 @@ export default function QuizPage() {
       // Redirect to results page
       router.push(`/result/${data.submissionId}`);
     } catch (error) {
-        console.error("Error submitting assessment:", error);
-        alert("There was an error submitting your assessment. Please try again.");
+      console.error("Error submitting assessment:", error);
+      alert("There was an error submitting your assessment. Please try again.");
       setIsSubmitting(false);
       setState("quiz");
     }
@@ -274,12 +284,13 @@ export default function QuizPage() {
               Role Alignment Assessment
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 mb-2 text-center">
-              Understanding how you naturally approach problems, risk, and delivery
+              Understanding how you naturally approach problems, risk, and
+              delivery
             </p>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 text-center">
               Take a few moments to reflect on your preferences and interests.
-              This assessment will help identify which role aligns best with your
-              natural thinking patterns.
+              This assessment will help identify which role aligns best with
+              your natural thinking patterns.
             </p>
 
             <div className="space-y-4 mb-8">
@@ -546,13 +557,26 @@ export default function QuizPage() {
         <div className="mb-6 md:mb-8">
           <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
             <span className="font-medium">
-              Question {currentQuestionIndex + 1} of {allQuestions.length}
+              {isBonusQuestion ? (
+                <>
+                  Bonus Question {bonusQuestionNumber} of {totalBonusQuestions}
+                  <span className="text-gray-500 dark:text-gray-500 ml-2">
+                    (Question {currentQuestionIndex + 1} of {totalQuestions})
+                  </span>
+                </>
+              ) : (
+                <>Question {currentQuestionIndex + 1} of {totalQuestions}</>
+              )}
             </span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 md:h-3">
             <div
-              className="bg-blue-600 h-2 md:h-3 rounded-full transition-all duration-300"
+              className={`h-2 md:h-3 rounded-full transition-all duration-300 ${
+                isBonusQuestion
+                  ? "bg-purple-600"
+                  : "bg-blue-600"
+              }`}
               style={{ width: `${progress}%` }}
             ></div>
           </div>
@@ -560,6 +584,13 @@ export default function QuizPage() {
 
         {/* Question card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 md:p-8 lg:p-10">
+          {isBonusQuestion && (
+            <div className="mb-4">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300">
+                Bonus Question
+              </span>
+            </div>
+          )}
           <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white mb-2 md:mb-3 leading-tight">
             {currentQuestion.prompt}
           </h2>
@@ -580,8 +611,9 @@ export default function QuizPage() {
             {currentQuestionIndex > 0 && (
               <button
                 onClick={() => {
-                  setCurrentQuestionIndex(currentQuestionIndex - 1);
-                  const prevQuestion = QUESTIONS[currentQuestionIndex - 1];
+                  const prevIndex = currentQuestionIndex - 1;
+                  setCurrentQuestionIndex(prevIndex);
+                  const prevQuestion = allQuestions[prevIndex];
                   setSelectedResponse(responses[prevQuestion.id] || null);
                 }}
                 className="flex-1 md:flex-none px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
@@ -594,11 +626,13 @@ export default function QuizPage() {
               disabled={!canProceed}
               className={`flex-1 md:flex-none px-8 py-3 font-semibold rounded-lg transition-colors duration-200 ${
                 canProceed
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
+                  ? isBonusQuestion
+                    ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
                   : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
               }`}
             >
-              {currentQuestionIndex < allQuestions.length - 1
+              {currentQuestionIndex < totalQuestions - 1
                 ? "Continue →"
                 : "Complete Reflection"}
             </button>

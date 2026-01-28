@@ -47,15 +47,16 @@ export default function Home() {
             Role Alignment Assessment
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            Understanding how you naturally approach problems, risk, and delivery
+            Understanding how you naturally approach problems, risk, and
+            delivery
           </p>
 
           {/* Description paragraph */}
           <p className="text-xl text-gray-700 dark:text-gray-300 mb-8 leading-relaxed">
             This assessment helps identify how individuals naturally approach
-            problem-solving, risk, and delivery under pressure. It&apos;s designed
-            to reduce operational risk by aligning responsibilities with demonstrated
-            thinking patterns.
+            problem-solving, risk, and delivery under pressure. It&apos;s
+            designed to reduce operational risk by aligning responsibilities
+            with demonstrated thinking patterns.
           </p>
 
           {/* Features list */}
@@ -66,7 +67,9 @@ export default function Home() {
             <ul className="space-y-3 text-gray-700 dark:text-gray-300">
               <li className="flex items-start">
                 <span className="text-blue-600 dark:text-blue-400 mr-2">✓</span>
-                <span>Complete a reflection on your problem-solving approach</span>
+                <span>
+                  Complete a reflection on your problem-solving approach
+                </span>
               </li>
               <li className="flex items-start">
                 <span className="text-blue-600 dark:text-blue-400 mr-2">✓</span>
@@ -74,7 +77,9 @@ export default function Home() {
               </li>
               <li className="flex items-start">
                 <span className="text-blue-600 dark:text-blue-400 mr-2">✓</span>
-                <span>Understand how your thinking patterns align with team needs</span>
+                <span>
+                  Understand how your thinking patterns align with team needs
+                </span>
               </li>
             </ul>
           </div>

@@ -158,7 +158,7 @@ export default function AdminPage() {
     const qaCount = roleCounts.primaryCounts["QA"] || 0;
     if (qaCount <= 2 && qaCount > 0) {
       insights.push(
-        `QA-style thinking is concentrated in ${qaCount} individual${qaCount === 1 ? "" : "s"} → elevated release risk`
+        `QA-style thinking is concentrated in ${qaCount} individual${qaCount === 1 ? "" : "s"} → elevated release risk`,
       );
     }
 
@@ -166,11 +166,11 @@ export default function AdminPage() {
     const beWithPmSecondary = filteredSubmissions.filter(
       (sub) =>
         (sub.primaryRole === "BE" || sub.primaryRole.includes("BE")) &&
-        sub.secondaryRole === "PM"
+        sub.secondaryRole === "PM",
     ).length;
     if (beWithPmSecondary > 0) {
       insights.push(
-        `Most Backend-aligned individuals also show secondary PM traits → good for ownership, but watch burnout`
+        `Most Backend-aligned individuals also show secondary PM traits → good for ownership, but watch burnout`,
       );
     }
 
@@ -179,19 +179,19 @@ export default function AdminPage() {
     const feSecondary = roleCounts.secondaryCounts["FE"] || 0;
     if (fePrimary === 0 && feSecondary > 0) {
       insights.push(
-        `FE alignment is present but often secondary → usability may be underrepresented`
+        `FE alignment is present but often secondary → usability may be underrepresented`,
       );
     }
 
     // Risk: Missing role coverage
     const allRoles = ["BE", "FE", "QA", "PM"] as RoleId[];
     const missingRoles = allRoles.filter(
-      (role) => (roleCounts.primaryCounts[role] || 0) === 0
+      (role) => (roleCounts.primaryCounts[role] || 0) === 0,
     );
     if (missingRoles.length > 0) {
       const roleLabels = missingRoles.map((r) => ROLES[r].label).join(", ");
       insights.push(
-        `No primary ${roleLabels} alignment detected → consider coverage gaps`
+        `No primary ${roleLabels} alignment detected → consider coverage gaps`,
       );
     }
 
@@ -201,7 +201,7 @@ export default function AdminPage() {
       (roleCounts.confidenceBandCounts["Hybrid"] || 0);
     if (lowConfidence > totalPeople * 0.3) {
       insights.push(
-        `${lowConfidence} individuals show Split/Hybrid confidence → consider additional context for role assignments`
+        `${lowConfidence} individuals show Split/Hybrid confidence → consider additional context for role assignments`,
       );
     }
 
@@ -213,7 +213,7 @@ export default function AdminPage() {
     if (filteredSubmissions.length === 0) return "";
 
     const sortedRoles = Object.entries(roleCounts.primaryCounts).sort(
-      (a, b) => b[1] - a[1]
+      (a, b) => b[1] - a[1],
     );
     const topRole = sortedRoles[0];
     const secondRole = sortedRoles[1];
@@ -464,9 +464,11 @@ export default function AdminPage() {
           {/* Non-negotiable context paragraph */}
           <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
             <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
-              <strong>Context:</strong> This tool identifies how individuals naturally approach problem-solving, risk, and delivery under pressure.
-              It is not a performance evaluation and does not override job titles.
-              Results are intended to reduce operational risk by aligning responsibilities with demonstrated thinking patterns.
+              <strong>Context:</strong> This tool identifies how individuals
+              naturally approach problem-solving, risk, and delivery under
+              pressure. It is not a performance evaluation and does not override
+              job titles. Results are intended to reduce operational risk by
+              aligning responsibilities with demonstrated thinking patterns.
             </p>
           </div>
         </div>
@@ -537,8 +539,7 @@ export default function AdminPage() {
                 <div className="space-y-2">
                   {(["Strong", "Clear", "Split", "Hybrid"] as const).map(
                     (band) => {
-                      const count =
-                        roleCounts.confidenceBandCounts[band] || 0;
+                      const count = roleCounts.confidenceBandCounts[band] || 0;
                       return (
                         <div
                           key={band}
@@ -614,7 +615,8 @@ export default function AdminPage() {
                 Individual Results
               </h2>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Click &quot;View Details&quot; to see full role fit profile and recommendations.
+                Click &quot;View Details&quot; to see full role fit profile and
+                recommendations.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -665,11 +667,13 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-sm">
                         {submission.secondaryRole ? (
                           <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                            {ROLES[submission.secondaryRole as RoleId]
-                              ?.label || submission.secondaryRole}
+                            {ROLES[submission.secondaryRole as RoleId]?.label ||
+                              submission.secondaryRole}
                           </span>
                         ) : (
-                          <span className="text-gray-400 italic text-xs">—</span>
+                          <span className="text-gray-400 italic text-xs">
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -678,14 +682,20 @@ export default function AdminPage() {
                             {submission.confidenceBand}
                           </span>
                         ) : (
-                          <span className="text-gray-400 italic text-xs">—</span>
+                          <span className="text-gray-400 italic text-xs">
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {submission.dominanceScore !== undefined ? (
-                          <span className="font-medium">{submission.dominanceScore} pts</span>
+                          <span className="font-medium">
+                            {submission.dominanceScore} pts
+                          </span>
                         ) : (
-                          <span className="text-gray-400 italic text-xs">—</span>
+                          <span className="text-gray-400 italic text-xs">
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs">
@@ -940,7 +950,7 @@ export default function AdminPage() {
                 {/* Watch-outs (Risk Conditions) */}
                 {(() => {
                   const primaryPlaybook = getRolePlaybookByString(
-                    selectedSubmission.primaryRole
+                    selectedSubmission.primaryRole,
                   );
                   return (
                     primaryPlaybook &&
@@ -967,7 +977,7 @@ export default function AdminPage() {
                 {/* How to Support */}
                 {(() => {
                   const primaryPlaybook = getRolePlaybookByString(
-                    selectedSubmission.primaryRole
+                    selectedSubmission.primaryRole,
                   );
                   return (
                     primaryPlaybook &&
@@ -1015,8 +1025,11 @@ export default function AdminPage() {
         {filteredSubmissions.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mt-6 border-t-4 border-red-500">
             <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
-              <strong>Guardrails:</strong> These results should be used to guide task assignment and risk mitigation, not to limit growth, promotion, or learning opportunities.
-              Individuals may intentionally stretch beyond their primary fit with appropriate support.
+              <strong>Guardrails:</strong> These results should be used to guide
+              task assignment and risk mitigation, not to limit growth,
+              promotion, or learning opportunities. Individuals may
+              intentionally stretch beyond their primary fit with appropriate
+              support.
             </p>
           </div>
         )}

@@ -337,7 +337,8 @@ export default function ResultPage() {
               Role Alignment Assessment
             </h1>
             <p className="text-lg text-gray-600 mb-2 print:text-base">
-              Understanding how you naturally approach problems, risk, and delivery
+              Understanding how you naturally approach problems, risk, and
+              delivery
             </p>
             {result.name && (
               <p className="text-lg text-gray-600 print:text-base">

@@ -48,10 +48,10 @@ export default function HowItWorksPage() {
                 Why This Tool Exists
               </h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                This assessment helps identify how individuals naturally approach
-                problem-solving, risk, and delivery under pressure. It&apos;s
-                designed to reduce operational risk by aligning responsibilities
-                with demonstrated thinking patterns.
+                This assessment helps identify how individuals naturally
+                approach problem-solving, risk, and delivery under pressure.
+                It&apos;s designed to reduce operational risk by aligning
+                responsibilities with demonstrated thinking patterns.
               </p>
               <p className="text-gray-700 dark:text-gray-300">
                 <strong>Important:</strong> This is not a performance evaluation
@@ -73,9 +73,10 @@ export default function HowItWorksPage() {
                   5-10 minutes.
                 </li>
                 <li>
-                  <strong>What it measures:</strong> The assessment identifies your
-                  natural thinking patterns, preferences, and risk mindset when
-                  approaching technical problems and operational challenges.
+                  <strong>What it measures:</strong> The assessment identifies
+                  your natural thinking patterns, preferences, and risk mindset
+                  when approaching technical problems and operational
+                  challenges.
                 </li>
                 <li>
                   <strong>Question types:</strong> You&apos;ll see different
@@ -220,9 +221,9 @@ export default function HowItWorksPage() {
                     How long does it take?
                   </h3>
                   <p className="text-gray-700 dark:text-gray-300">
-                    Most people complete the assessment in 5-10 minutes. You&apos;ll
-                    reflect on 10 core questions, and possibly 2-3 bonus questions
-                    if needed for accuracy.
+                    Most people complete the assessment in 5-10 minutes.
+                    You&apos;ll reflect on 10 core questions, and possibly 2-3
+                    bonus questions if needed for accuracy.
                   </p>
                 </div>
 
@@ -244,9 +245,9 @@ export default function HowItWorksPage() {
                   <p className="text-gray-700 dark:text-gray-300">
                     Yes. Your thinking patterns and preferences can evolve as
                     you gain experience and develop new skills. You can complete
-                    the assessment again at any time to see how your role fit may have
-                    changed. Results are a snapshot of your current approach,
-                    not a permanent label.
+                    the assessment again at any time to see how your role fit
+                    may have changed. Results are a snapshot of your current
+                    approach, not a permanent label.
                   </p>
                 </div>
               </div>
