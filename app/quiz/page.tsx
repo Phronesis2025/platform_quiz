@@ -82,7 +82,7 @@ export default function QuizPage() {
     ? currentQuestionIndex - QUESTIONS.length + 1
     : 0;
   const totalBonusQuestions = bonusQuestionIds.length;
-  
+
   const progress =
     totalQuestions > 0
       ? ((currentQuestionIndex + 1) / totalQuestions) * 100
@@ -565,7 +565,9 @@ export default function QuizPage() {
                   </span>
                 </>
               ) : (
-                <>Question {currentQuestionIndex + 1} of {totalQuestions}</>
+                <>
+                  Question {currentQuestionIndex + 1} of {totalQuestions}
+                </>
               )}
             </span>
             <span>{Math.round(progress)}%</span>
@@ -573,9 +575,7 @@ export default function QuizPage() {
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 md:h-3">
             <div
               className={`h-2 md:h-3 rounded-full transition-all duration-300 ${
-                isBonusQuestion
-                  ? "bg-purple-600"
-                  : "bg-blue-600"
+                isBonusQuestion ? "bg-purple-600" : "bg-blue-600"
               }`}
               style={{ width: `${progress}%` }}
             ></div>
