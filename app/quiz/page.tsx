@@ -72,19 +72,24 @@ export default function QuizPage() {
   };
 
   // Get current question from allQuestions (core + bonus)
-  const currentQuestion = allQuestions[currentQuestionIndex];
+  // Only calculate these when we're in quiz state and have questions
+  const currentQuestion = 
+    state === "quiz" && allQuestions.length > 0 && currentQuestionIndex < allQuestions.length
+      ? allQuestions[currentQuestionIndex]
+      : null;
+  
   // Check if current question is a bonus question (ID >= 100)
-  const isBonusQuestion = currentQuestion && currentQuestion.id >= 100;
+  const isBonusQuestion = currentQuestion ? currentQuestion.id >= 100 : false;
   // Calculate total questions (core + bonus if they've been added)
   const totalQuestions = allQuestions.length;
   // Calculate which bonus question number this is (if bonus)
-  const bonusQuestionNumber = isBonusQuestion
+  const bonusQuestionNumber = isBonusQuestion && currentQuestion
     ? currentQuestionIndex - QUESTIONS.length + 1
     : 0;
   const totalBonusQuestions = bonusQuestionIds.length;
-
+  
   const progress =
-    totalQuestions > 0
+    totalQuestions > 0 && currentQuestionIndex < totalQuestions
       ? ((currentQuestionIndex + 1) / totalQuestions) * 100
       : 0;
 
@@ -540,6 +545,11 @@ export default function QuizPage() {
 
     return null;
   };
+
+  // Don't render quiz UI if we don't have a current question or aren't in quiz state
+  if (!currentQuestion || state !== "quiz") {
+    return null;
+  }
 
   // Validate if answer is selected
   const canProceed = (() => {
